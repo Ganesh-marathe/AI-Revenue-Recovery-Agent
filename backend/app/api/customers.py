@@ -34,3 +34,19 @@ def create_customer(
         "email": customer.email,
         "company": customer.company
     }
+@router.get("/")
+def get_customers(db: Session = Depends(get_db)):
+    customers = db.query(Customer).all()
+
+    return {
+        "count": len(customers),
+        "customers": [
+            {
+                "id": customer.id,
+                "name": customer.name,
+                "email": customer.email,
+                "company": customer.company
+            }
+            for customer in customers
+        ]
+    }
