@@ -8,6 +8,7 @@ from backend.app.models.invoice import Invoice
 from backend.app.api.customers import router as customers_router
 from backend.app.models.payment import Payment
 from backend.app.api.payments import router as payments_router
+from backend.app.api.analytics import router as analytics_router
 app = FastAPI()
 
 # Allow React frontend
@@ -25,6 +26,7 @@ app.include_router(recovery_router)
 app.include_router(customers_router)
 app.include_router(invoices_router)
 app.include_router(payments_router)
+app.include_router(analytics_router)
 Base.metadata.create_all(bind=engine)
 
 
