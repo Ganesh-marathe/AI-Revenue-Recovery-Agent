@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from backend.app.database.database import get_db
 from backend.app.models.invoice import Invoice
 from backend.app.models.payment import Payment
-
+from backend.app.models.recovery_case import RecoveryCase
 from backend.app.services.risk_service import calculate_revenue_risk
 from backend.app.agents.diagnosis_agent import diagnose_revenue_problem
 from backend.app.agents.intervention_agent import choose_recovery_action
@@ -80,10 +80,39 @@ def analyze_recovery(
     risk["risk_level"],
     risk["revenue_at_risk"]
     )
+        # Check if an open recovery case already exists
+    existing_case = (
+        db.query(RecoveryCase)
+        .filter(
+            RecoveryCase.invoice_id == invoice.id,
+            RecoveryCase.status == "open"
+        )
+        .first()
+    )
 
+    if existing_case:
+        recovery_case = existing_case
+
+    else:
+        recovery_case = RecoveryCase(
+            invoice_id=invoice.id,
+            customer_id=invoice.customer_id,
+            revenue_at_risk=risk["revenue_at_risk"],
+            risk_level=risk["risk_level"],
+            diagnosis=diagnosis["diagnosis"],
+            recommended_action=diagnosis["recommended_action"],
+            intervention_action=intervention["action"],
+            status="open"
+        )
+
+        db.add(recovery_case)
+        db.commit()
+        db.refresh(recovery_case)
     # Final response
     return {
         "invoice_id": invoice.id,
+        "case_id": recovery_case.id,
+        "case_status": recovery_case.status,
         "customer_id": invoice.customer_id,
         "invoice_amount": invoice.amount,
         "payment_amount": payment_amount,
