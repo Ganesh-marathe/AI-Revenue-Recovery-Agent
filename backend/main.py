@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.recovery import router as recovery_router
-
+from backend.app.models.invoice import Invoice
 
 app = FastAPI()
 
