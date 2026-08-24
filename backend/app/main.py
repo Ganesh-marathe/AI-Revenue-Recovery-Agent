@@ -6,6 +6,8 @@ from backend.app.api.recovery import router as recovery_router
 from backend.app.models.customer import Customer
 from backend.app.models.invoice import Invoice
 from backend.app.api.customers import router as customers_router
+from backend.app.models.payment import Payment
+from backend.app.api.payments import router as payments_router
 app = FastAPI()
 
 # Allow React frontend
@@ -22,7 +24,9 @@ app.add_middleware(
 app.include_router(recovery_router)
 app.include_router(customers_router)
 app.include_router(invoices_router)
+app.include_router(payments_router)
 Base.metadata.create_all(bind=engine)
+
 
 @app.get("/")
 def home():
