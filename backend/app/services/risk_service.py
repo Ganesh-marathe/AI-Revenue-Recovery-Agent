@@ -1,21 +1,29 @@
 def calculate_revenue_risk(invoice_amount, payment_amount, payment_status):
     """
-    Calculate revenue at risk and risk level.
+    Calculate actual revenue at risk based on payment status.
     """
 
-    revenue_at_risk = max(invoice_amount - payment_amount, 0)
+    status = payment_status.lower()
 
-    if payment_status.lower() == "failed":
+    if status == "success":
+        revenue_at_risk = 0
+        risk_level = "LOW"
+
+    elif status == "failed":
+        revenue_at_risk = invoice_amount
         risk_level = "HIGH"
 
-    elif payment_status.lower() == "pending":
-        risk_level = "MEDIUM"
+    elif status == "pending":
+        revenue_at_risk = max(invoice_amount - payment_amount, 0)
 
-    elif revenue_at_risk > 0:
-        risk_level = "MEDIUM"
+        if revenue_at_risk > 0:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
 
     else:
-        risk_level = "LOW"
+        revenue_at_risk = max(invoice_amount - payment_amount, 0)
+        risk_level = "MEDIUM"
 
     return {
         "invoice_amount": invoice_amount,
