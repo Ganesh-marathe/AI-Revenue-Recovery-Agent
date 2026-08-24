@@ -9,6 +9,7 @@ from backend.app.api.customers import router as customers_router
 from backend.app.models.payment import Payment
 from backend.app.api.payments import router as payments_router
 from backend.app.api.analytics import router as analytics_router
+from backend.app.models.recovery_case import RecoveryCase
 app = FastAPI()
 
 # Allow React frontend

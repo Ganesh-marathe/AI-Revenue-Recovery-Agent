@@ -7,7 +7,7 @@ from backend.app.models.payment import Payment
 
 from backend.app.services.risk_service import calculate_revenue_risk
 from backend.app.agents.diagnosis_agent import diagnose_revenue_problem
-
+from backend.app.agents.intervention_agent import choose_recovery_action
 
 router = APIRouter(
     prefix="/api/recovery",
@@ -75,7 +75,11 @@ def analyze_recovery(
         risk["risk_level"],
         risk["revenue_at_risk"]
     )
-
+    intervention = choose_recovery_action(
+    payment_status,
+    risk["risk_level"],
+    risk["revenue_at_risk"]
+    )
 
     # Final response
     return {
@@ -87,5 +91,8 @@ def analyze_recovery(
         "revenue_at_risk": risk["revenue_at_risk"],
         "risk_level": risk["risk_level"],
         "diagnosis": diagnosis["diagnosis"],
-        "recommended_action": diagnosis["recommended_action"]
+        "recommended_action": diagnosis["recommended_action"],
+        "intervention_action": intervention["action"],
+        "intervention_priority": intervention["priority"],
+        "intervention_message": intervention["message"]
     }
