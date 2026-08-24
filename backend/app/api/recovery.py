@@ -5,7 +5,7 @@ from backend.app.database.database import get_db
 from backend.app.models.invoice import Invoice
 from backend.app.models.payment import Payment
 from backend.app.models.recovery_case import RecoveryCase
-
+from backend.app.models.audit_log import AuditLog
 from backend.app.services.risk_service import calculate_revenue_risk
 from backend.app.agents.diagnosis_agent import diagnose_revenue_problem
 from backend.app.agents.intervention_agent import choose_recovery_action
@@ -139,31 +139,108 @@ def analyze_recovery(
 # Get All Recovery Cases
 # ---------------------------------
 
-@router.get("/cases")
-def get_recovery_cases(
+@router.post("/cases/{case_id}/execute")
+def execute_recovery_action(
+    case_id: int,
     db: Session = Depends(get_db)
 ):
 
-    cases = (
+    # Find recovery case
+    recovery_case = (
         db.query(RecoveryCase)
-        .order_by(RecoveryCase.id.desc())
+        .filter(RecoveryCase.id == case_id)
+        .first()
+    )
+
+    if not recovery_case:
+        raise HTTPException(
+            status_code=404,
+            detail="Recovery case not found"
+        )
+
+    # Check case status
+    if recovery_case.status != "open":
+        raise HTTPException(
+            status_code=400,
+            detail="Recovery case is not open"
+        )
+
+    # Get selected action
+    action = recovery_case.intervention_action
+
+    # Simulate recovery action
+    if action == "retry_payment":
+        execution_message = (
+            "Payment retry requested successfully."
+        )
+
+    elif action == "send_payment_reminder":
+        execution_message = (
+            "Payment reminder sent successfully."
+        )
+
+    elif action == "contact_customer":
+        execution_message = (
+            "Customer contact action created successfully."
+        )
+
+    elif action == "no_action":
+        execution_message = (
+            "No recovery action required."
+        )
+
+    else:
+        execution_message = (
+            "Recovery action sent for manual review."
+        )
+
+    # Update case status
+    recovery_case.status = "executed"
+
+    # Create audit log
+    audit_log = AuditLog(
+        case_id=recovery_case.id,
+        action=action,
+        status="executed",
+        message=execution_message
+    )
+
+    db.add(audit_log)
+
+    # Save changes
+    db.commit()
+    db.refresh(recovery_case)
+
+    return {
+        "message": "Recovery action executed successfully!",
+        "case_id": recovery_case.id,
+        "action": action,
+        "status": recovery_case.status,
+        "execution_message": execution_message
+
+    }
+@router.get("/audit-logs")
+def get_audit_logs(
+    db: Session = Depends(get_db)
+):
+
+    logs = (
+        db.query(AuditLog)
+        .order_by(AuditLog.id.desc())
         .all()
     )
 
     return {
-        "count": len(cases),
-        "cases": [
+        "count": len(logs),
+        "logs": [
             {
-                "case_id": case.id,
-                "invoice_id": case.invoice_id,
-                "customer_id": case.customer_id,
-                "revenue_at_risk": case.revenue_at_risk,
-                "risk_level": case.risk_level,
-                "diagnosis": case.diagnosis,
-                "recommended_action": case.recommended_action,
-                "intervention_action": case.intervention_action,
-                "status": case.status
+                "log_id": log.id,
+                "case_id": log.case_id,
+                "action": log.action,
+                "status": log.status,
+                "message": log.message,
+                "created_at": log.created_at
             }
-            for case in cases
+            for log in logs
         ]
     }
