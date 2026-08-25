@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from backend.app.database.database import get_db
 from backend.app.models.invoice import Invoice
 from backend.app.models.payment import Payment
+from backend.app.models.recovery_case import RecoveryCase
 from backend.app.services.risk_service import calculate_revenue_risk
 
 router = APIRouter(
@@ -71,4 +73,93 @@ def revenue_risk(db: Session = Depends(get_db)):
         "medium_risk_cases": medium_risk_cases,
         "low_risk_cases": low_risk_cases,
         "cases": results
+    }
+# ---------------------------------
+# Recovery Analytics Summary
+# ---------------------------------
+
+@router.get("/summary")
+def recovery_summary(
+    db: Session = Depends(get_db)
+):
+
+    total_cases = (
+        db.query(RecoveryCase)
+        .count()
+    )
+
+    open_cases = (
+        db.query(RecoveryCase)
+        .filter(
+            RecoveryCase.status == "open"
+        )
+        .count()
+    )
+
+    executed_cases = (
+        db.query(RecoveryCase)
+        .filter(
+            RecoveryCase.status == "executed"
+        )
+        .count()
+    )
+
+    high_risk_cases = (
+        db.query(RecoveryCase)
+        .filter(
+            RecoveryCase.risk_level == "HIGH"
+        )
+        .count()
+    )
+
+    total_revenue_at_risk = (
+        db.query(
+            func.coalesce(
+                func.sum(
+                    RecoveryCase.revenue_at_risk
+                ),
+                0
+            )
+        )
+        .scalar()
+    )
+
+    return {
+        "total_cases": total_cases,
+        "open_cases": open_cases,
+        "executed_cases": executed_cases,
+        "high_risk_cases": high_risk_cases,
+        "total_revenue_at_risk": total_revenue_at_risk
+    }
+# ---------------------------------
+# Risk Level Summary
+# ---------------------------------
+
+@router.get("/risk-summary")
+def risk_summary(
+    db: Session = Depends(get_db)
+):
+
+    high_risk = (
+        db.query(RecoveryCase)
+        .filter(RecoveryCase.risk_level == "HIGH")
+        .count()
+    )
+
+    medium_risk = (
+        db.query(RecoveryCase)
+        .filter(RecoveryCase.risk_level == "MEDIUM")
+        .count()
+    )
+
+    low_risk = (
+        db.query(RecoveryCase)
+        .filter(RecoveryCase.risk_level == "LOW")
+        .count()
+    )
+
+    return {
+        "HIGH": high_risk,
+        "MEDIUM": medium_risk,
+        "LOW": low_risk
     }
