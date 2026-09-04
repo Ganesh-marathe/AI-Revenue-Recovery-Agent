@@ -1,0 +1,1261 @@
+/* =========================================================
+   REVIVEAI DASHBOARD
+   Enterprise Revenue Recovery UI
+   ========================================================= */
+
+.ra-dashboard {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 28px 30px 40px;
+  box-sizing: border-box;
+  color: #0f172a;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.ra-dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.ra-eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: #7c3aed;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.ra-dashboard-header h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 27px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.ra-dashboard-header p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.ra-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ra-primary-button,
+.ra-secondary-button {
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ra-primary-button {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.ra-primary-button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.ra-secondary-button {
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  color: #334155;
+}
+
+.ra-secondary-button:hover {
+  border-color: #b8c5d6;
+  background: #f8fafc;
+}
+
+.ra-primary-button:disabled,
+.ra-secondary-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   KPI GRID
+   ========================================================= */
+
+.ra-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ra-kpi-card {
+  position: relative;
+  min-height: 125px;
+  padding: 17px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #ffffff;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, 0.04);
+  box-sizing: border-box;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.ra-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 22px rgba(15, 23, 42, 0.08);
+}
+
+.ra-kpi-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ra-kpi-icon.blue {
+  background: #e8f0ff;
+  color: #2563eb;
+}
+
+.ra-kpi-icon.orange {
+  background: #fff1df;
+  color: #f97316;
+}
+
+.ra-kpi-icon.green {
+  background: #e2f8eb;
+  color: #16a34a;
+}
+
+.ra-kpi-icon.purple {
+  background: #f1e9ff;
+  color: #7c3aed;
+}
+
+.ra-kpi-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ra-kpi-content > span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.ra-kpi-content > strong {
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.ra-kpi-content > small {
+  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.ra-kpi-content em {
+  margin-top: 7px;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ra-kpi-content em.blue,
+.ra-kpi-content em.green {
+  color: #16a34a;
+}
+
+.ra-kpi-content em.orange {
+  color: #ef4444;
+}
+
+.ra-kpi-content em.purple {
+  color: #ef4444;
+}
+
+.ra-mini-chart {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  font-size: 17px;
+  letter-spacing: -4px;
+  opacity: 0.65;
+}
+
+.ra-mini-chart.blue {
+  color: #60a5fa;
+}
+
+.ra-mini-chart.orange {
+  color: #fb923c;
+}
+
+.ra-mini-chart.green {
+  color: #4ade80;
+}
+
+.ra-mini-chart.purple {
+  color: #a78bfa;
+}
+
+/* =========================================================
+   COMMON CARD
+   ========================================================= */
+
+.ra-card {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #ffffff;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, 0.035);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.ra-card + .ra-card {
+  margin-top: 16px;
+}
+
+.ra-two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.ra-two-column > .ra-card {
+  min-width: 0;
+}
+
+.ra-card-header {
+  min-height: 62px;
+  padding: 17px 18px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  box-sizing: border-box;
+}
+
+.ra-card-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.ra-card-header p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.ra-live,
+.ra-period,
+.ra-insight-button,
+.ra-view-button {
+  flex-shrink: 0;
+}
+
+.ra-live {
+  color: #16a34a;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.ra-live.purple {
+  color: #7c3aed;
+}
+
+.ra-period {
+  padding: 5px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #64748b;
+  background: #ffffff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.ra-insight-button,
+.ra-view-button {
+  border: 0;
+  border-radius: 7px;
+  background: #f4edff;
+  color: #7c3aed;
+  padding: 7px 11px;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ra-view-button {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* =========================================================
+   RISK OVERVIEW
+   ========================================================= */
+
+.ra-risk-content {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 25px;
+  align-items: center;
+  padding: 8px 20px 15px;
+}
+
+.ra-donut-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.ra-donut {
+  width: 135px;
+  height: 135px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ra-donut-inner {
+  width: 83px;
+  height: 83px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ra-donut-inner strong {
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.ra-donut-inner span {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.ra-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.ra-risk-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ra-risk-item-header > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ra-risk-item-header strong {
+  color: #334155;
+  font-size: 10px;
+}
+
+.ra-risk-item-header > span {
+  color: #64748b;
+  font-size: 9px;
+}
+
+.ra-risk-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.ra-risk-dot.red {
+  background: #ef4444;
+}
+
+.ra-risk-dot.orange {
+  background: #f97316;
+}
+
+.ra-risk-dot.green {
+  background: #16a34a;
+}
+
+.ra-risk-progress {
+  width: 100%;
+  height: 5px;
+  border-radius: 10px;
+  background: #edf1f5;
+  overflow: hidden;
+}
+
+.ra-risk-progress div {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.ra-risk-progress .red {
+  background: #ef4444;
+}
+
+.ra-risk-progress .orange {
+  background: #f97316;
+}
+
+.ra-risk-progress .green {
+  background: #16a34a;
+}
+
+.ra-risk-item small {
+  display: block;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 8px;
+}
+
+.ra-risk-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 18px 17px;
+}
+
+.ra-risk-money {
+  padding: 11px 13px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.ra-risk-money.danger {
+  background: #fff6f6;
+  border-color: #fee2e2;
+}
+
+.ra-risk-money.success {
+  background: #f3fbf5;
+  border-color: #dcfce7;
+}
+
+.ra-risk-money span {
+  display: block;
+  color: #64748b;
+  font-size: 8px;
+}
+
+.ra-risk-money strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 15px;
+}
+
+.ra-risk-money.danger strong {
+  color: #ef4444;
+}
+
+.ra-risk-money.success strong {
+  color: #16a34a;
+}
+
+/* =========================================================
+   RECOVERY PERFORMANCE
+   ========================================================= */
+
+.ra-performance-layout {
+  min-height: 170px;
+  padding: 12px 20px 5px;
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+}
+
+.ra-performance-donut {
+  display: flex;
+  justify-content: center;
+}
+
+.ra-performance-ring {
+  width: 135px;
+  height: 135px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ra-performance-inner {
+  width: 91px;
+  height: 91px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ra-performance-inner strong {
+  font-size: 25px;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.ra-performance-inner span {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 8px;
+}
+
+.ra-performance-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid #edf1f5;
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.ra-performance-stat {
+  min-height: 76px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-right: 1px solid #edf1f5;
+}
+
+.ra-performance-stat:last-child {
+  border-right: 0;
+}
+
+.ra-performance-stat > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ra-performance-stat strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.ra-performance-stat span:last-child {
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 8px;
+}
+
+.green-dot,
+.blue-dot,
+.gray-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.green-dot {
+  background: #16a34a;
+}
+
+.blue-dot {
+  background: #3b82f6;
+}
+
+.gray-dot {
+  background: #94a3b8;
+}
+
+.ra-performance-bar-wrap {
+  padding: 0 20px 18px;
+}
+
+.ra-performance-bar {
+  width: 100%;
+  height: 7px;
+  border-radius: 10px;
+  background: #edf1f5;
+  overflow: hidden;
+}
+
+.ra-performance-bar div {
+  height: 100%;
+  border-radius: inherit;
+  background: #16a34a;
+}
+
+/* =========================================================
+   AI INTELLIGENCE
+   ========================================================= */
+
+.ra-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.ra-ai-box {
+  min-height: 135px;
+  padding: 15px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.ra-ai-box.high {
+  background: #fff6f6;
+  border-color: #fee2e2;
+}
+
+.ra-ai-box.medium {
+  background: #fff9f0;
+  border-color: #ffedd5;
+}
+
+.ra-ai-box.low {
+  background: #f3fbf5;
+  border-color: #dcfce7;
+}
+
+.ra-ai-box-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ra-ai-symbol {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ra-ai-box.high .ra-ai-symbol {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.ra-ai-box.medium .ra-ai-symbol {
+  background: #ffedd5;
+  color: #f97316;
+}
+
+.ra-ai-box.low .ra-ai-symbol {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ra-ai-box-top span {
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.ra-ai-box.high .ra-ai-box-top span {
+  color: #dc2626;
+}
+
+.ra-ai-box.medium .ra-ai-box-top span {
+  color: #ea580c;
+}
+
+.ra-ai-box.low .ra-ai-box-top span {
+  color: #16a34a;
+}
+
+.ra-ai-box h3 {
+  margin: 9px 0 3px;
+  font-size: 17px;
+  color: #0f172a;
+}
+
+.ra-ai-box p {
+  min-height: 25px;
+  margin: 0;
+  color: #64748b;
+  font-size: 9px;
+}
+
+.ra-ai-box button {
+  margin-top: 11px;
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ra-ai-box.high button {
+  background: #ef4444;
+}
+
+.ra-ai-box.medium button {
+  background: #f97316;
+}
+
+.ra-ai-box.low button {
+  background: #16a34a;
+}
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.ra-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0 18px 18px;
+  box-sizing: border-box;
+}
+
+.ra-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.ra-table th {
+  padding: 10px 9px;
+  background: #f8fafc;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 8px;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ra-table td {
+  padding: 11px 9px;
+  border-bottom: 1px solid #edf1f5;
+  color: #475569;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.ra-table tbody tr:hover {
+  background: #fafcff;
+}
+
+.ra-table td strong {
+  color: #334155;
+  font-weight: 700;
+}
+
+.ra-customer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ra-avatar {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ede9fe;
+  color: #7c3aed;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.ra-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  border-radius: 5px;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.risk-high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.risk-medium {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.risk-low {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.risk-unknown {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.payment-success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.payment-failed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.payment-pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.payment-unknown {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ra-action-text {
+  color: #475569;
+  font-weight: 600;
+}
+
+.ra-empty {
+  padding: 35px !important;
+  text-align: center !important;
+  color: #94a3b8 !important;
+}
+
+/* =========================================================
+   AI ACTIVITY
+   ========================================================= */
+
+.ra-activity-list {
+  padding: 0 18px 18px;
+}
+
+.ra-activity-item {
+  min-height: 61px;
+  padding: 9px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #edf1f5;
+}
+
+.ra-activity-item:last-child {
+  border-bottom: 0;
+}
+
+.ra-activity-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f1e9ff;
+  color: #7c3aed;
+  font-size: 12px;
+}
+
+.ra-activity-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.ra-activity-content strong {
+  display: block;
+  color: #334155;
+  font-size: 9px;
+}
+
+.ra-activity-content p {
+  margin: 3px 0;
+  color: #64748b;
+  font-size: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ra-activity-content small {
+  color: #94a3b8;
+  font-size: 7px;
+}
+
+.ra-success-status {
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* =========================================================
+   FUNNEL
+   ========================================================= */
+
+.ra-funnel {
+  min-height: 175px;
+  padding: 15px 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.ra-funnel-step {
+  min-width: 0;
+  flex: 1;
+  padding: 12px 5px;
+  text-align: center;
+  border: 1px solid #edf1f5;
+  border-radius: 8px;
+  background: #fafcff;
+}
+
+.ra-funnel-icon {
+  width: 25px;
+  height: 25px;
+  margin: 0 auto 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.ra-funnel-icon.red {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.ra-funnel-icon.orange {
+  background: #ffedd5;
+  color: #f97316;
+}
+
+.ra-funnel-icon.purple {
+  background: #f1e9ff;
+  color: #7c3aed;
+}
+
+.ra-funnel-icon.green {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ra-funnel-step span {
+  display: block;
+  color: #64748b;
+  font-size: 7px;
+  font-weight: 600;
+}
+
+.ra-funnel-step strong {
+  display: block;
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.ra-funnel-arrow {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: 17px;
+}
+
+/* =========================================================
+   REVENUE SUMMARY
+   ========================================================= */
+
+.ra-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.ra-summary-box {
+  min-height: 73px;
+  padding: 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  border: 1px solid #edf1f5;
+  background: #fafcff;
+}
+
+.ra-summary-icon {
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ra-summary-box.danger .ra-summary-icon {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.ra-summary-box.success .ra-summary-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ra-summary-box.warning .ra-summary-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.ra-summary-box.blue .ra-summary-icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.ra-summary-box span {
+  display: block;
+  color: #64748b;
+  font-size: 8px;
+}
+
+.ra-summary-box strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+/* =========================================================
+   STATES
+   ========================================================= */
+
+.ra-dashboard-state {
+  min-height: 65vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.ra-dashboard-state h2 {
+  margin: 15px 0 5px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.ra-dashboard-state p {
+  margin: 0 0 17px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.ra-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: ra-spin 0.8s linear infinite;
+}
+
+@keyframes ra-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ra-error-icon {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .ra-dashboard {
+    padding: 22px 20px 35px;
+  }
+
+  .ra-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ra-risk-content,
+  .ra-performance-layout {
+    grid-template-columns: 145px minmax(0, 1fr);
+  }
+
+  .ra-donut,
+  .ra-performance-ring {
+    width: 120px;
+    height: 120px;
+  }
+
+  .ra-donut-inner {
+    width: 75px;
+    height: 75px;
+  }
+
+  .ra-performance-inner {
+    width: 82px;
+    height: 82px;
+  }
+}
+
+@media (max-width: 900px) {
+  .ra-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-ai-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .ra-dashboard {
+    padding: 18px 12px 30px;
+  }
+
+  .ra-dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ra-header-actions {
+    width: 100%;
+  }
+
+  .ra-header-actions button {
+    flex: 1;
+  }
+
+  .ra-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-risk-content {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-risk-list {
+    width: 100%;
+  }
+
+  .ra-risk-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-performance-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-performance-stats {
+    width: 100%;
+  }
+
+  .ra-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-funnel {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .ra-funnel-step {
+    min-width: 115px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ra-dashboard-header h1 {
+    font-size: 22px;
+  }
+
+  .ra-kpi-card {
+    min-height: 115px;
+  }
+
+  .ra-card-header {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .ra-table-wrapper {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}

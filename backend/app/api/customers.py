@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from backend.app.database.database import get_db
 from backend.app.models.customer import Customer
+from backend.app.api.auth import get_current_user
+
 
 router = APIRouter(
     prefix="/api/customers",
@@ -15,7 +17,8 @@ def create_customer(
     name: str,
     email: str,
     company: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
     customer = Customer(
         name=name,
@@ -34,8 +37,13 @@ def create_customer(
         "email": customer.email,
         "company": customer.company
     }
+
+
 @router.get("/")
-def get_customers(db: Session = Depends(get_db)):
+def get_customers(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     customers = db.query(Customer).all()
 
     return {

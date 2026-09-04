@@ -1,88 +1,116 @@
 import React, { useState } from "react";
+
 import RecoveryCases from "./pages/RecoveryCases";
 import Navbar from "./components/Navbar";
 import Invoices from "./pages/Invoices";
 import Analytics from "./pages/Analytics";
 import AIInsights from "./pages/AIInsights";
 import Sidebar from "./components/Sidebar";
-import AuditTrail from "./pages/AuditTrail";    
+import AuditTrail from "./pages/AuditTrail";
 import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+
 import "./App.css";
 
-function SimplePage({ title, description }) {
-  return (
-    <div className="dashboard-page">
-      <section className="dashboard-header">
-        <div>
-          <span className="dashboard-eyebrow">
-            REVIVEAI OPERATIONS
-          </span>
-
-          <h1>{title}</h1>
-
-          <p>{description}</p>
-        </div>
-      </section>
-
-      <section className="dashboard-card">
-        <div className="card-header">
-          <div>
-            <h2>{title}</h2>
-            <p>Module is ready for integration.</p>
-          </div>
-        </div>
-
-        <div style={{ padding: "40px 10px" }}>
-          <h3>ReviveAI {title}</h3>
-          <p>
-            This module will display live revenue recovery
-            information from the backend.
-          </p>
-        </div>
-      </section>
-    </div>
-  );
-}
-
 function App() {
-  const [activePage, setActivePage] = useState("Dashboard");
 
+  // Check whether JWT token already exists
+  const [isAuthenticated, setIsAuthenticated] =
+    useState(
+      !!localStorage.getItem("reviveai_token")
+    );
+
+  // Current active page
+  const [activePage, setActivePage] =
+    useState("Dashboard");
+
+
+  // Login successful
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+
+  // Logout
+  const handleLogout = () => {
+
+    // Remove JWT token
+    localStorage.removeItem("reviveai_token");
+
+    // Remove user information
+    localStorage.removeItem("reviveai_user");
+
+    // Show Login page
+    setIsAuthenticated(false);
+
+    // Reset page
+    setActivePage("Dashboard");
+  };
+
+
+  // Display selected page
   const renderPage = () => {
+
     switch (activePage) {
+
       case "Recovery Cases":
-  return <RecoveryCases />;
+        return <RecoveryCases />;
 
       case "Invoices":
-  return <Invoices />;
+        return <Invoices />;
 
       case "AI Insights":
-  return <AIInsights />;
+        return <AIInsights />;
 
-     case "Analytics":
-  return <Analytics />;
+      case "Analytics":
+        return <Analytics />;
 
       case "Audit Trail":
-  return <AuditTrail />;
+        return <AuditTrail />;
 
       default:
         return <Dashboard />;
     }
-  }; 
+  };
 
+
+  /*
+   * जर user login केलेला नसेल
+   * तर Login page दाखवा
+   */
+  if (!isAuthenticated) {
+    return (
+      <Login
+        onLogin={handleLogin}
+      />
+    );
+  }
+
+
+  /*
+   * User login केलेला असल्यास
+   * पूर्ण Dashboard application दाखवा
+   */
   return (
     <div className="app-layout">
+
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
       />
 
       <div className="app-main">
-        <Navbar />
+
+        <Navbar
+          onLogout={handleLogout}
+        />
 
         <main className="main-page">
           {renderPage()}
         </main>
+
       </div>
+
     </div>
   );
 }

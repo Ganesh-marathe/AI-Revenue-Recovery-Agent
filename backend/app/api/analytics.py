@@ -7,6 +7,8 @@ from backend.app.models.invoice import Invoice
 from backend.app.models.payment import Payment
 from backend.app.models.recovery_case import RecoveryCase
 from backend.app.services.risk_service import calculate_revenue_risk
+from backend.app.api.auth import get_current_user
+
 
 router = APIRouter(
     prefix="/api/analytics",
@@ -15,7 +17,10 @@ router = APIRouter(
 
 
 @router.get("/revenue-risk")
-def revenue_risk(db: Session = Depends(get_db)):
+def revenue_risk(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
 
     invoices = db.query(Invoice).all()
 
@@ -74,13 +79,16 @@ def revenue_risk(db: Session = Depends(get_db)):
         "low_risk_cases": low_risk_cases,
         "cases": results
     }
+
+
 # ---------------------------------
 # Recovery Analytics Summary
 # ---------------------------------
 
 @router.get("/summary")
 def recovery_summary(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     total_cases = (
@@ -131,13 +139,16 @@ def recovery_summary(
         "high_risk_cases": high_risk_cases,
         "total_revenue_at_risk": total_revenue_at_risk
     }
+
+
 # ---------------------------------
 # Risk Level Summary
 # ---------------------------------
 
 @router.get("/risk-summary")
 def risk_summary(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
 
     high_risk = (

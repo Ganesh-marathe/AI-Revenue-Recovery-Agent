@@ -1,11 +1,12 @@
 import React from "react";
 import "./Navbar.css";
 
-function Navbar() {
+function Navbar({ onLogout }) {
   return (
     <header className="navbar">
 
       <div className="navbar-left">
+
         <div className="mobile-menu">
           ☰
         </div>
@@ -14,22 +15,34 @@ function Navbar() {
           <span>AI-POWERED OPERATIONS</span>
           <h2>Revenue Recovery Intelligence</h2>
         </div>
+
       </div>
+
 
       <div className="navbar-right">
 
-        <button className="nav-icon" title="Search">
+        <button
+          className="nav-icon"
+          title="Search"
+        >
           ⌕
         </button>
 
-        <button className="nav-icon notification" title="Notifications">
+
+        <button
+          className="nav-icon notification"
+          title="Notifications"
+        >
           ♧
           <span className="notification-dot"></span>
         </button>
 
+
         <div className="nav-divider"></div>
 
+
         <div className="user-profile">
+
           <div className="user-avatar">
             GM
           </div>
@@ -39,8 +52,21 @@ function Navbar() {
             <span>Administrator</span>
           </div>
 
-          <span className="user-arrow">⌄</span>
+          <span className="user-arrow">
+            ⌄
+          </span>
+
         </div>
+
+
+        {/* Logout Button */}
+        <button
+          className="logout-button"
+          onClick={onLogout}
+          title="Logout"
+        >
+          Logout
+        </button>
 
       </div>
 

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-
+import React, { useEffect, useMemo, useState } from "react";
 import {
   getDashboardSummary,
   getRevenueRisk,
@@ -7,61 +6,260 @@ import {
   getCustomers,
 } from "../services/api";
 
+import "./Dashboard.css";
+
 function Dashboard() {
-  const [summary, setSummary] = useState(null);
+  const [summary, setSummary] = useState({});
   const [riskCases, setRiskCases] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [customers, setCustomers] = useState([]);
-  const [revenueRiskTotal, setRevenueRiskTotal] = useState(0);
-  const loadDashboard = async () => {
-  try {
-    setLoading(true);
-    setError("");
 
-  const [
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
-    
-  summaryData,
-  riskData,
-  auditData,
-  customerData,
-] = await Promise.all([
-  getDashboardSummary(),
-  getRevenueRisk(),
-  getAuditLogs(),
-  getCustomers(),
-]);
-    setSummary(summaryData);
+  // =========================================================
+  // LOAD DATA
+  // =========================================================
 
-    const cases = Array.isArray(riskData)
-      ? riskData
-      : riskData?.cases || [];
+  const loadDashboard = async (refresh = false) => {
+    try {
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-    setRiskCases(cases);
-    setRevenueRiskTotal(Number(riskData?.total_revenue_at_risk || 0));
-    setAuditLogs(auditData?.logs || []);
-    setCustomers(customerData?.customers || []);
+      setError("");
 
-  } catch (err) {
-    console.error("Dashboard error:", err);
-    setError(
-      "Unable to connect to the ReviveAI backend."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      const [
+        summaryData,
+        riskData,
+        auditData,
+        customerData,
+      ] = await Promise.all([
+        getDashboardSummary(),
+        getRevenueRisk(),
+        getAuditLogs(),
+        getCustomers(),
+      ]);
+
+      setSummary(summaryData || {});
+
+      const cases = Array.isArray(riskData)
+        ? riskData
+        : riskData?.cases || [];
+
+      setRiskCases(cases);
+
+      const logs = Array.isArray(auditData)
+        ? auditData
+        : auditData?.logs || [];
+
+      setAuditLogs(logs);
+
+      const customerList = Array.isArray(customerData)
+        ? customerData
+        : customerData?.customers || [];
+
+      setCustomers(customerList);
+    } catch (err) {
+      console.error("Dashboard error:", err);
+
+      setError(
+        err?.message ||
+          "Unable to connect to the ReviveAI backend."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-  loadDashboard();
-}, []);
+    loadDashboard();
+  }, []);
+
+  // =========================================================
+  // HELPERS
+  // =========================================================
+
+  const formatCurrency = (amount) => {
+    return `₹${Number(amount || 0).toLocaleString(
+      "en-IN",
+      {
+        maximumFractionDigits: 0,
+      }
+    )}`;
+  };
+
+  const getCustomerName = (customerId) => {
+    const customer = customers.find(
+      (item) =>
+        Number(item.id) === Number(customerId)
+    );
+
+    return customer?.name || `Customer #${customerId}`;
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "Just now";
+
+    const parsed = new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return "Recently";
+    }
+
+    return parsed.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const riskClass = (risk) => {
+    const value = String(risk || "").toLowerCase();
+
+    if (value === "high") return "high";
+    if (value === "medium") return "medium";
+    if (value === "low") return "low";
+
+    return "unknown";
+  };
+
+  const paymentClass = (status) => {
+    const value = String(status || "").toLowerCase();
+
+    if (value === "success") return "success";
+    if (value === "failed") return "failed";
+    if (value === "pending") return "pending";
+
+    return "unknown";
+  };
+
+  const getAction = (status) => {
+    const value = String(status || "").toLowerCase();
+
+    if (value === "failed") {
+      return "Retry Payment";
+    }
+
+    if (value === "pending") {
+      return "Payment Reminder";
+    }
+
+    if (value === "success") {
+      return "Monitor";
+    }
+
+    return "Review";
+  };
+
+  // =========================================================
+  // METRICS
+  // =========================================================
+
+  const metrics = useMemo(() => {
+    const totalCases = Number(
+      summary?.total_cases || 0
+    );
+
+    const openCases = Number(
+      summary?.open_cases || 0
+    );
+
+    const executedCases = Number(
+      summary?.executed_cases || 0
+    );
+
+    const revenueAtRisk =
+      Number(
+        summary?.total_revenue_at_risk || 0
+      ) ||
+      riskCases.reduce(
+        (sum, item) =>
+          sum +
+          Number(item.revenue_at_risk || 0),
+        0
+      );
+
+    const highRiskCases = riskCases.filter(
+      (item) =>
+        String(item.risk_level || "")
+          .toUpperCase() === "HIGH"
+    ).length;
+
+    const mediumRiskCases = riskCases.filter(
+      (item) =>
+        String(item.risk_level || "")
+          .toUpperCase() === "MEDIUM"
+    ).length;
+
+    const lowRiskCases = riskCases.filter(
+      (item) =>
+        String(item.risk_level || "")
+          .toUpperCase() === "LOW"
+    ).length;
+
+    const totalRiskCases = riskCases.length;
+
+    const executionRate =
+      totalCases > 0
+        ? Math.round(
+            (executedCases / totalCases) * 100
+          )
+        : 0;
+
+    const recoveredRevenue = riskCases.reduce(
+      (sum, item) => {
+        if (
+          String(item.payment_status || "")
+            .toLowerCase() === "success"
+        ) {
+          return (
+            sum +
+            Number(item.payment_amount || 0)
+          );
+        }
+
+        return sum;
+      },
+      0
+    );
+
+    const pendingRecovery = Math.max(
+      revenueAtRisk - recoveredRevenue,
+      0
+    );
+
+    return {
+      totalCases,
+      openCases,
+      executedCases,
+      revenueAtRisk,
+      highRiskCases,
+      mediumRiskCases,
+      lowRiskCases,
+      totalRiskCases,
+      executionRate,
+      recoveredRevenue,
+      pendingRecovery,
+    };
+  }, [summary, riskCases]);
+
+  // =========================================================
+  // LOADING
+  // =========================================================
 
   if (loading) {
     return (
-      <div className="dashboard-state">
-        <div className="spinner"></div>
+      <div className="ra-dashboard-state">
+        <div className="ra-spinner"></div>
+
         <h2>Loading ReviveAI...</h2>
+
         <p>
           Connecting to Revenue Recovery Intelligence
         </p>
@@ -69,15 +267,22 @@ function Dashboard() {
     );
   }
 
+  // =========================================================
+  // ERROR
+  // =========================================================
+
   if (error) {
     return (
-      <div className="dashboard-state error-state">
+      <div className="ra-dashboard-state ra-error-state">
+        <div className="ra-error-icon">!</div>
+
         <h2>Backend Connection Failed</h2>
+
         <p>{error}</p>
 
         <button
-          className="primary-button"
-          onClick={loadDashboard}
+          className="ra-primary-button"
+          onClick={() => loadDashboard()}
         >
           Retry Connection
         </button>
@@ -85,83 +290,87 @@ function Dashboard() {
     );
   }
 
-  const totalCases = Number(summary?.total_cases || 0);
-  const totalRiskCases = riskCases.length;
+  // =========================================================
+  // DONUT
+  // =========================================================
 
-  const openCases = Number(summary?.open_cases || 0);
-
-  const executedCases = Number(
-    summary?.executed_cases || 0
-  );
-
-  const revenueAtRisk = revenueRiskTotal;
-
-  const highRiskCases = riskCases.filter(
-    (item) =>
-      String(item.risk_level || "").toUpperCase() === "HIGH"
-  ).length;
-
-  const mediumRiskCases = riskCases.filter(
-    (item) =>
-      String(item.risk_level || "").toUpperCase() ===
-      "MEDIUM"
-  ).length;
-
-  const lowRiskCases = riskCases.filter(
-    (item) =>
-      String(item.risk_level || "").toUpperCase() === "LOW"
-  ).length;
-
-  const recoveryRate =
-    totalCases > 0
-      ? Math.round((executedCases / totalCases) * 100)
+  const highPercent =
+    metrics.totalRiskCases > 0
+      ? (metrics.highRiskCases /
+          metrics.totalRiskCases) *
+        100
       : 0;
 
-  const getCustomerName = (customerId) => {
-  const customer = customers.find(
-    (item) => item.id === customerId
-  );
+  const mediumPercent =
+    metrics.totalRiskCases > 0
+      ? (metrics.mediumRiskCases /
+          metrics.totalRiskCases) *
+        100
+      : 0;
 
-  return customer
-    ? customer.name
-    : `Customer #${customerId}`;
-};
-  const formatCurrency = (amount) => {
-    return `₹${Number(amount).toLocaleString("en-IN")}`;
-  };
+  const donutStyle =
+    metrics.totalRiskCases > 0
+      ? {
+          background: `conic-gradient(
+            #ef4444 0% ${highPercent}%,
+            #f97316 ${highPercent}% ${
+              highPercent + mediumPercent
+            }%,
+            #16a34a ${
+              highPercent + mediumPercent
+            }% 100%
+          )`,
+        }
+      : {
+          background: "#e2e8f0",
+        };
+
+  // =========================================================
+  // DASHBOARD
+  // =========================================================
 
   return (
-    <div className="dashboard-page">
+    <div className="ra-dashboard">
 
-      {/* HEADER */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
-      <section className="dashboard-header">
+      <section className="ra-dashboard-header">
 
         <div>
-          <span className="dashboard-eyebrow">
+          <span className="ra-eyebrow">
             AI-POWERED OPERATIONS
           </span>
 
           <h1>
-            Good evening, Admin 👋
+            Good evening, Ganesh 👋
           </h1>
 
           <p>
-            Monitor revenue risk, automate recovery actions,
-            and maximize recovered revenue with AI.
+            Monitor revenue risk, automate recovery
+            actions, and maximize recovered revenue
+            with AI.
           </p>
         </div>
 
-        <div className="dashboard-actions">
+        <div className="ra-header-actions">
 
           <button
-            className="secondary-button"
-            onClick={loadDashboard}
+            className="ra-secondary-button"
+            onClick={() => loadDashboard(true)}
+            disabled={refreshing}
           >
-            ↻ Refresh
+            {refreshing ? (
+              "Refreshing..."
+            ) : (
+              <>
+                ↻ Refresh
+              </>
+            )}
           </button>
 
-          <button className="primary-button">
+          <button className="ra-primary-button">
             + Create Recovery Case
           </button>
 
@@ -169,120 +378,153 @@ function Dashboard() {
 
       </section>
 
-      {/* KPI CARDS */}
+      {/* =====================================================
+          KPI CARDS
+      ===================================================== */}
 
-      <section className="kpi-grid">
+      <section className="ra-kpi-grid">
 
         <KpiCard
           icon="▣"
-          title="Total Cases"
-          value={totalCases}
-          subtitle="Recovery cases"
+          title="Total Recovery Cases"
+          value={metrics.totalCases}
+          subtitle="Active recovery portfolio"
           type="blue"
+          trend="↑ 12% from last month"
         />
 
         <KpiCard
           icon="!"
           title="Open Cases"
-          value={openCases}
-          subtitle={
-            openCases > 0
-              ? "Need attention"
-              : "No critical open cases"
-          }
+          value={metrics.openCases}
+          subtitle="Need attention"
           type="orange"
+          trend="↓ 33% from last month"
         />
 
         <KpiCard
-          icon="ϟ"
+          icon="✓"
           title="Actions Executed"
-          value={executedCases}
-          subtitle={`${recoveryRate}% execution rate`}
+          value={metrics.executedCases}
+          subtitle={`${metrics.executionRate}% execution rate`}
           type="green"
+          trend="↑ 40% from last month"
         />
 
         <KpiCard
           icon="₹"
           title="Revenue At Risk"
-          value={formatCurrency(revenueAtRisk)}
+          value={formatCurrency(
+            metrics.revenueAtRisk
+          )}
           subtitle="Potential recovery"
           type="purple"
+          trend="↓ 18% from last month"
         />
 
       </section>
 
-      {/* CHART ROW */}
+      {/* =====================================================
+          RISK + RECOVERY PERFORMANCE
+      ===================================================== */}
 
-      <section className="dashboard-two-column">
+      <section className="ra-two-column">
 
-        {/* RISK OVERVIEW */}
+        {/* RISK */}
 
-        <div className="dashboard-card">
+        <div className="ra-card">
 
-          <div className="card-header">
+          <div className="ra-card-header">
 
             <div>
-              <h2>Revenue Risk Overview</h2>
-              <p>Cases by risk severity</p>
+              <h2>
+                Revenue Risk Overview
+              </h2>
+
+              <p>
+                Cases by risk severity
+              </p>
             </div>
 
-            <span className="live-label">
+            <span className="ra-live">
               ● LIVE
             </span>
 
           </div>
 
-          <div className="risk-layout">
+          <div className="ra-risk-content">
 
-            <div className="risk-list">
+            <div className="ra-donut-wrap">
 
-              <RiskRow
-                label="HIGH RISK"
-                value={highRiskCases}
-                total={totalRiskCases}
-                type="high"
-              />
+              <div
+                className="ra-donut"
+                style={donutStyle}
+              >
+                <div className="ra-donut-inner">
 
-              <RiskRow
-                label="MEDIUM RISK"
-                value={mediumRiskCases}
-                total={totalRiskCases}
-                type="medium"
-              />
+                  <strong>
+                    {metrics.totalRiskCases}
+                  </strong>
 
-              <RiskRow
-                label="LOW RISK"
-                value={lowRiskCases}
-                total={totalRiskCases}
-                type="low"
-              />
+                  <span>
+                    At-Risk
+                  </span>
+
+                </div>
+              </div>
 
             </div>
 
-            <div className="risk-donut">
+            <div className="ra-risk-list">
 
-              <div className="donut-center">
-                <strong>{totalRiskCases}</strong>
-                <span>Risk Cases</span>
-              </div>
+              <RiskItem
+                color="red"
+                title="High Risk"
+                count={metrics.highRiskCases}
+                total={metrics.totalRiskCases}
+              />
+
+              <RiskItem
+                color="orange"
+                title="Medium Risk"
+                count={metrics.mediumRiskCases}
+                total={metrics.totalRiskCases}
+              />
+
+              <RiskItem
+                color="green"
+                title="Low Risk"
+                count={metrics.lowRiskCases}
+                total={metrics.totalRiskCases}
+              />
 
             </div>
 
           </div>
 
-          <div className="risk-summary">
+          <div className="ra-risk-summary">
 
-            <div>
-              <span>Total Revenue At Risk</span>
-              <strong className="danger-text">
-                {formatCurrency(revenueAtRisk)}
+            <div className="ra-risk-money danger">
+              <span>
+                Total Revenue At Risk
+              </span>
+
+              <strong>
+                {formatCurrency(
+                  metrics.revenueAtRisk
+                )}
               </strong>
             </div>
 
-            <div>
-              <span>Potential Recovery</span>
-              <strong className="success-text">
-                {formatCurrency(revenueAtRisk)}
+            <div className="ra-risk-money success">
+              <span>
+                Potential Recovery
+              </span>
+
+              <strong>
+                {formatCurrency(
+                  metrics.pendingRecovery
+                )}
               </strong>
             </div>
 
@@ -292,56 +534,114 @@ function Dashboard() {
 
         {/* RECOVERY PERFORMANCE */}
 
-        <div className="dashboard-card">
+        <div className="ra-card">
 
-          <div className="card-header">
+          <div className="ra-card-header">
 
             <div>
-              <h2>Recovery Performance</h2>
+              <h2>
+                Recovery Performance
+              </h2>
+
               <p>
                 Current recovery execution performance
               </p>
             </div>
 
-            <span className="period-label">
+            <span className="ra-period">
               Current
             </span>
 
           </div>
 
-          <div className="performance">
+          <div className="ra-performance-layout">
 
-            <div className="performance-number">
-              {recoveryRate}
-              <small>%</small>
+            <div className="ra-performance-donut">
+
+              <div
+                className="ra-performance-ring"
+                style={{
+                  background: `conic-gradient(
+                    #16a34a 0% ${metrics.executionRate}%,
+                    #e2e8f0 ${metrics.executionRate}% 100%
+                  )`,
+                }}
+              >
+                <div className="ra-performance-inner">
+
+                  <strong>
+                    {metrics.executionRate}%
+                  </strong>
+
+                  <span>
+                    Execution Rate
+                  </span>
+
+                </div>
+              </div>
+
             </div>
 
-            <p>Recovery Rate</p>
+            <div className="ra-performance-stats">
 
-            <div className="performance-bar">
+              <div className="ra-performance-stat">
+                <span className="green-dot"></span>
+
+                <div>
+                  <strong>
+                    {metrics.executedCases}
+                  </strong>
+
+                  <span>
+                    Executed
+                  </span>
+                </div>
+              </div>
+
+              <div className="ra-performance-stat">
+                <span className="blue-dot"></span>
+
+                <div>
+                  <strong>
+                    {metrics.openCases}
+                  </strong>
+
+                  <span>
+                    Open
+                  </span>
+                </div>
+              </div>
+
+              <div className="ra-performance-stat">
+                <span className="gray-dot"></span>
+
+                <div>
+                  <strong>
+                    {metrics.totalCases}
+                  </strong>
+
+                  <span>
+                    Total
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <div className="ra-performance-bar-wrap">
+
+            <div className="ra-performance-bar">
+
               <div
                 style={{
-                  width: `${recoveryRate}%`,
+                  width: `${Math.min(
+                    metrics.executionRate,
+                    100
+                  )}%`,
                 }}
               ></div>
-            </div>
-
-            <div className="performance-stats">
-
-              <div>
-                <strong>{executedCases}</strong>
-                <span>Executed</span>
-              </div>
-
-              <div>
-                <strong>{openCases}</strong>
-                <span>Open</span>
-              </div>
-
-              <div>
-                <strong>{totalCases}</strong>
-                <span>Total</span>
-              </div>
 
             </div>
 
@@ -351,14 +651,18 @@ function Dashboard() {
 
       </section>
 
-      {/* AI RECOVERY INTELLIGENCE */}
+      {/* =====================================================
+          AI RECOVERY INTELLIGENCE
+      ===================================================== */}
 
-      <section className="dashboard-card">
+      <section className="ra-card">
 
-        <div className="card-header">
+        <div className="ra-card-header">
 
           <div>
-            <h2>AI Recovery Intelligence</h2>
+            <h2>
+              AI Recovery Intelligence
+            </h2>
 
             <p>
               AI-powered recommendations for
@@ -366,26 +670,26 @@ function Dashboard() {
             </p>
           </div>
 
-          <span className="ai-label">
-            ✦ AI POWERED
-          </span>
+          <button className="ra-insight-button">
+            View All Insights
+          </button>
 
         </div>
 
-        <div className="ai-grid">
+        <div className="ra-ai-grid">
 
           <AIBox
             type="high"
             title="High Priority"
-            count={highRiskCases}
+            count={metrics.highRiskCases}
             message="Immediate recovery attention required."
-            button="Execute Action"
+            button="Execute Actions"
           />
 
           <AIBox
             type="medium"
             title="Medium Priority"
-            count={mediumRiskCases}
+            count={metrics.mediumRiskCases}
             message="Payment follow-up recommended."
             button="Review Cases"
           />
@@ -393,7 +697,7 @@ function Dashboard() {
           <AIBox
             type="low"
             title="Low Priority"
-            count={lowRiskCases}
+            count={metrics.lowRiskCases}
             message="Continue monitoring payment behavior."
             button="View Details"
           />
@@ -402,349 +706,365 @@ function Dashboard() {
 
       </section>
 
+      {/* =====================================================
+          RECENT RECOVERY CASES
+      ===================================================== */}
 
-{/* RECENT RECOVERY CASES */}
+      <section className="ra-card">
 
-<section className="dashboard-card">
+        <div className="ra-card-header">
 
-  <div className="card-header">
+          <div>
+            <h2>
+              Recent Recovery Cases
+            </h2>
 
-    <div>
-      <h2>Recent Recovery Cases</h2>
+            <p>
+              Latest cases with status and AI
+              recommendations
+            </p>
+          </div>
 
-      <p>
-        Live revenue risk cases from ReviveAI
-      </p>
-    </div>
+          <button className="ra-view-button">
+            View All
+          </button>
 
-    <button className="view-all-button">
-      View All →
-    </button>
-
-  </div>
-
-  <div className="cases-table-wrapper">
-
-    <table className="cases-table">
-
-  <thead>
-   <tr>
-    <th>Case ID</th>
-    <th>Invoice</th>
-    <th>Customer</th>
-    <th>Amount</th>
-    <th>Risk</th>
-    <th>Payment</th>
-    <th>AI Action</th>
-  </tr>
-</thead>
-      <tbody>
-  {riskCases.slice(0, 5).map((item) => (
-    <tr key={item.invoice_id}>
-
-      <td>
-        RC-{String(item.invoice_id).padStart(4, "0")}
-      </td>
-
-      <td>
-        INV-{item.invoice_id}
-      </td>
-
-      <td>
-        <strong>
-          {getCustomerName(item.customer_id)}
-        </strong>
-      </td>
-
-      <td>
-        ₹{Number(item.invoice_amount || 0).toLocaleString("en-IN")}
-      </td>
-
-      <td>
-        <span
-          className={`risk-badge ${String(
-            item.risk_level
-          ).toLowerCase()}`}
-        >
-          {item.risk_level}
-        </span>
-      </td>
-
-      <td>
-        <span
-          className={`payment-status ${String(
-            item.payment_status
-          ).toLowerCase()}`}
-        >
-          {item.payment_status}
-        </span>
-      </td>
-
-      <td>
-        {item.payment_status === "failed"
-          ? "Retry Payment"
-          : item.payment_status === "pending"
-          ? "Payment Reminder"
-          : "Monitor"}
-      </td>
-
-    </tr>
-  ))}
-</tbody>
-
-    </table>
-
-  </div>
-
-</section>
-{/* AI ACTIVITY + RECOVERY FUNNEL */}
-
-<section className="dashboard-two-column">
-
-  {/* AI ACTIVITY */}
-
-  <div className="dashboard-card">
-
-    <div className="card-header">
-
-      <div>
-        <h2>AI Activity</h2>
-
-        <p>
-          Latest AI recovery actions
-        </p>
-      </div>
-
-      <span className="ai-label">
-        ✦ LIVE
-      </span>
-
-    </div>
-
-    <div className="activity-list">
-
-      {auditLogs.length === 0 ? (
-
-        <div className="empty-activity">
-          No AI activity yet.
         </div>
 
-      ) : (
+        <div className="ra-table-wrapper">
 
-        auditLogs.slice(0, 5).map((log) => (
+          <table className="ra-table">
 
-          <div
-            className="activity-item"
-            key={log.log_id}
-          >
+            <thead>
+              <tr>
+                <th>Case ID</th>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Risk</th>
+                <th>Status</th>
+                <th>AI Action</th>
+              </tr>
+            </thead>
 
-            <div className="activity-icon">
-              ⚡
-            </div>
+            <tbody>
 
-            <div className="activity-content">
+              {riskCases.length === 0 ? (
 
-              <strong>
-                Recovery action executed
-              </strong>
+                <tr>
+                  <td
+                    colSpan="7"
+                    className="ra-empty"
+                  >
+                    No recovery cases available.
+                  </td>
+                </tr>
+
+              ) : (
+
+                riskCases
+                  .slice(0, 5)
+                  .map((item, index) => {
+
+                    const status =
+                      String(
+                        item.payment_status || ""
+                      ).toLowerCase();
+
+                    return (
+                      <tr
+                        key={
+                          item.invoice_id ||
+                          index
+                        }
+                      >
+
+                        <td>
+                          <strong>
+                            RC-
+                            {String(
+                              item.invoice_id ||
+                                index + 1
+                            ).padStart(3, "0")}
+                          </strong>
+                        </td>
+
+                        <td>
+                          INV-
+                          {item.invoice_id}
+                        </td>
+
+                        <td>
+                          <div className="ra-customer">
+
+                            <div className="ra-avatar">
+                              {getCustomerName(
+                                item.customer_id
+                              )
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+
+                            <strong>
+                              {getCustomerName(
+                                item.customer_id
+                              )}
+                            </strong>
+
+                          </div>
+                        </td>
+
+                        <td>
+                          {formatCurrency(
+                            item.invoice_amount
+                          )}
+                        </td>
+
+                        <td>
+                          <span
+                            className={`ra-badge risk-${riskClass(
+                              item.risk_level
+                            )}`}
+                          >
+                            {item.risk_level ||
+                              "UNKNOWN"}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`ra-badge payment-${paymentClass(
+                              status
+                            )}`}
+                          >
+                            {item.payment_status ||
+                              "Unknown"}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span className="ra-action-text">
+                            {getAction(status)}
+                          </span>
+                        </td>
+
+                      </tr>
+                    );
+                  })
+
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+      {/* =====================================================
+          ACTIVITY + FUNNEL
+      ===================================================== */}
+
+      <section className="ra-two-column">
+
+        {/* AI ACTIVITY */}
+
+        <div className="ra-card">
+
+          <div className="ra-card-header">
+
+            <div>
+              <h2>
+                AI Activity
+              </h2>
 
               <p>
-                {log.message}
+                Latest AI actions across all cases
               </p>
-
-              <small>
-                Case #{log.case_id} •{" "}
-                {log.action}
-              </small>
-
             </div>
 
-            <span className="activity-status">
-              {log.status}
+            <span className="ra-live purple">
+              ✦ LIVE
             </span>
 
           </div>
 
-        ))
+          <div className="ra-activity-list">
 
-      )}
+            {auditLogs.length === 0 ? (
 
-    </div>
+              <div className="ra-empty-activity">
+                No AI activity yet.
+              </div>
 
-  </div>
+            ) : (
 
-{auditLogs.map((log) => (
-  <div className="activity-item" key={log.log_id}>
+              auditLogs
+                .slice(0, 5)
+                .map((log, index) => (
 
-    <div className="activity-icon">
-      ⚡
-    </div>
+                  <div
+                    className="ra-activity-item"
+                    key={
+                      log.log_id || index
+                    }
+                  >
 
-    <div className="activity-content">
-      <strong>
-        Recovery action executed
-      </strong>
+                    <div className="ra-activity-icon">
+                      ⚡
+                    </div>
 
-      <p>
-        {log.message}
-      </p>
+                    <div className="ra-activity-content">
 
-      <small>
-        Case #{log.case_id} · {log.action}
-      </small>
-    </div>
+                      <strong>
+                        Recovery action executed
+                      </strong>
 
-    <span className="activity-status">
-      {log.status}
-    </span>
+                      <p>
+                        {log.message ||
+                          "Recovery action processed successfully."}
+                      </p>
 
-  </div>
-))}
+                      <small>
+                        Case #{log.case_id}
+                        {" • "}
+                        {log.action}
+                        {" • "}
+                        {formatDate(
+                          log.created_at
+                        )}
+                      </small>
 
+                    </div>
 
-  {/* RECOVERY FUNNEL */}
+                    <span className="ra-success-status">
+                      {log.status || "Success"}
+                    </span>
 
-  <div className="dashboard-card">
+                  </div>
 
-    <div className="card-header">
+                ))
 
-      <div>
-        <h2>Recovery Funnel</h2>
+            )}
 
-        <p>
-          Revenue recovery pipeline
-        </p>
-      </div>
-
-    </div>
-
-    <div className="funnel">
-
-      <FunnelRow
-        label="Invoices At Risk"
-        value={riskCases.length}
-        icon="▣"
-      />
-
-      <FunnelRow
-        label="High Risk"
-        value={highRiskCases}
-        icon="⚠"
-      />
-
-      <FunnelRow
-        label="Medium Risk"
-        value={mediumRiskCases}
-        icon="↓"
-      />
-
-      <FunnelRow
-        label="Recovery Actions"
-        value={auditLogs.length}
-        icon="⚡"
-      />
-
-      <FunnelRow
-        label="Executed"
-        value={executedCases}
-        icon="✓"
-      />
-
-    </div>
-
-  </div>
-
-</section>
-
-<section className="dashboard-card">
-
-  <div className="card-header">
-    <div>
-      <h2>Recovery Funnel</h2>
-      <p>Current revenue recovery pipeline</p>
-    </div>
-  </div>
-
-  <div className="funnel">
-
-    <FunnelRow
-      label="Invoices At Risk"
-      value={riskCases.length}
-      icon="▣"
-    />
-
-    <FunnelRow
-      label="High Risk"
-      value={highRiskCases}
-      icon="⚠"
-    />
-
-    <FunnelRow
-      label="Medium Risk"
-      value={mediumRiskCases}
-      icon="↓"
-    />
-
-    <FunnelRow
-      label="Recovery Actions"
-      value={auditLogs.length}
-      icon="⚡"
-    />
-
-    <FunnelRow
-      label="Executed"
-      value={executedCases}
-      icon="✓"
-    />
-
-  </div>
-
-</section>
-
-      {/* QUICK SUMMARY */}
-
-      <section className="dashboard-card">
-
-        <div className="card-header">
-
-          <div>
-            <h2>Revenue Recovery Summary</h2>
-            <p>Live financial recovery position</p>
           </div>
 
         </div>
 
-        <div className="summary-grid">
+        {/* RECOVERY FUNNEL */}
 
-          <SummaryItem
-            label="Revenue At Risk"
-            value={formatCurrency(revenueAtRisk)}
+        <div className="ra-card">
+
+          <div className="ra-card-header">
+
+            <div>
+              <h2>
+                Recovery Funnel
+              </h2>
+
+              <p>
+                Current revenue recovery pipeline
+              </p>
+            </div>
+
+          </div>
+
+          <div className="ra-funnel">
+
+            <FunnelStep
+              icon="⚠"
+              label="Invoices At Risk"
+              value={metrics.totalRiskCases}
+              type="red"
+            />
+
+            <FunnelArrow />
+
+            <FunnelStep
+              icon="◉"
+              label="High Risk"
+              value={metrics.highRiskCases}
+              type="orange"
+            />
+
+            <FunnelArrow />
+
+            <FunnelStep
+              icon="↗"
+              label="Recovery Actions"
+              value={auditLogs.length}
+              type="purple"
+            />
+
+            <FunnelArrow />
+
+            <FunnelStep
+              icon="✓"
+              label="Executed"
+              value={metrics.executedCases}
+              type="green"
+            />
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* =====================================================
+          REVENUE SUMMARY
+      ===================================================== */}
+
+      <section className="ra-card">
+
+        <div className="ra-card-header">
+
+          <div>
+            <h2>
+              Revenue Recovery Summary
+            </h2>
+
+            <p>
+              Key financial recovery metrics
+            </p>
+          </div>
+
+        </div>
+
+        <div className="ra-summary-grid">
+
+          <SummaryBox
+            icon="₹"
+            label="Total At Risk"
+            value={formatCurrency(
+              metrics.revenueAtRisk
+            )}
             type="danger"
           />
 
-          <SummaryItem
-            label="Revenue Recovered"
-            value={
-              formatCurrency(
-                executedCases > 0
-                  ? revenueAtRisk
-                  : 0
-              )
-            }
+          <SummaryBox
+            icon="✓"
+            label="Recovered"
+            value={formatCurrency(
+              metrics.recoveredRevenue
+            )}
             type="success"
           />
 
-          <SummaryItem
+          <SummaryBox
+            icon="!"
             label="Pending Recovery"
             value={formatCurrency(
-              openCases > 0 ? revenueAtRisk : 0
+              metrics.pendingRecovery
             )}
             type="warning"
           />
 
-          <SummaryItem
-            label="Recovery Rate"
-            value={`${recoveryRate}%`}
+          <SummaryBox
+            icon="↗"
+            label="Execution Rate"
+            value={`${metrics.executionRate}%`}
             type="blue"
           />
 
@@ -756,8 +1076,9 @@ function Dashboard() {
   );
 }
 
-
-/* KPI CARD */
+// =============================================================
+// KPI CARD
+// =============================================================
 
 function KpiCard({
   icon,
@@ -765,25 +1086,38 @@ function KpiCard({
   value,
   subtitle,
   type,
+  trend,
 }) {
   return (
-    <div className="kpi-card">
+    <div className="ra-kpi-card">
 
-      <div className={`kpi-icon ${type}`}>
+      <div
+        className={`ra-kpi-icon ${type}`}
+      >
         {icon}
       </div>
 
-      <div className="kpi-content">
+      <div className="ra-kpi-content">
 
-        <span>{title}</span>
+        <span>
+          {title}
+        </span>
 
-        <strong>{value}</strong>
+        <strong>
+          {value}
+        </strong>
 
-        <small>{subtitle}</small>
+        <small>
+          {subtitle}
+        </small>
+
+        <em className={type}>
+          {trend}
+        </em>
 
       </div>
 
-      <div className={`mini-chart ${type}`}>
+      <div className={`ra-mini-chart ${type}`}>
         ╱╲╱╲╱╲
       </div>
 
@@ -791,37 +1125,46 @@ function KpiCard({
   );
 }
 
+// =============================================================
+// RISK ITEM
+// =============================================================
 
-/* RISK ROW */
-
-function RiskRow({
-  label,
-  value,
+function RiskItem({
+  color,
+  title,
+  count,
   total,
-  type,
 }) {
   const percentage =
     total > 0
-      ? Math.round((value / total) * 100)
+      ? Math.round((count / total) * 100)
       : 0;
 
   return (
-    <div className="risk-row">
+    <div className="ra-risk-item">
 
-      <div className="risk-row-header">
+      <div className="ra-risk-item-header">
 
-        <span className={`risk-dot ${type}`}></span>
+        <div>
+          <span
+            className={`ra-risk-dot ${color}`}
+          ></span>
 
-        <strong>{label}</strong>
+          <strong>
+            {title}
+          </strong>
+        </div>
 
-        <span>{value} cases</span>
+        <span>
+          {count} cases
+        </span>
 
       </div>
 
-      <div className="risk-progress">
+      <div className="ra-risk-progress">
 
         <div
-          className={type}
+          className={color}
           style={{
             width: `${percentage}%`,
           }}
@@ -836,15 +1179,72 @@ function RiskRow({
     </div>
   );
 }
-function FunnelRow({
-  label,
-  value,
-  icon,
+
+// =============================================================
+// AI BOX
+// =============================================================
+
+function AIBox({
+  type,
+  title,
+  count,
+  message,
+  button,
 }) {
   return (
-    <div className="funnel-row">
+    <div className={`ra-ai-box ${type}`}>
 
-      <div className="funnel-icon">
+      <div className="ra-ai-box-top">
+
+        <div className="ra-ai-symbol">
+          {type === "high"
+            ? "◎"
+            : type === "medium"
+            ? "!"
+            : "◇"}
+        </div>
+
+        <span>
+          {title}
+        </span>
+
+      </div>
+
+      <h3>
+        {count}{" "}
+        {count === 1
+          ? "case"
+          : "cases"}
+      </h3>
+
+      <p>
+        {message}
+      </p>
+
+      <button>
+        {button} →
+      </button>
+
+    </div>
+  );
+}
+
+// =============================================================
+// FUNNEL
+// =============================================================
+
+function FunnelStep({
+  icon,
+  label,
+  value,
+  type,
+}) {
+  return (
+    <div className="ra-funnel-step">
+
+      <div
+        className={`ra-funnel-icon ${type}`}
+      >
         {icon}
       </div>
 
@@ -860,50 +1260,40 @@ function FunnelRow({
   );
 }
 
-/* AI BOX */
-
-function AIBox({
-  type,
-  title,
-  count,
-  message,
-  button,
-}) {
+function FunnelArrow() {
   return (
-    <div className={`ai-box ${type}`}>
-
-      <span className="ai-priority">
-        {title}
-      </span>
-
-      <h3>
-        {count} {count === 1 ? "case" : "cases"}
-      </h3>
-
-      <p>{message}</p>
-
-      <button>{button} →</button>
-
+    <div className="ra-funnel-arrow">
+      →
     </div>
   );
 }
 
+// =============================================================
+// SUMMARY
+// =============================================================
 
-/* SUMMARY */
-
-function SummaryItem({
+function SummaryBox({
+  icon,
   label,
   value,
   type,
 }) {
   return (
-    <div className="summary-item">
+    <div className={`ra-summary-box ${type}`}>
 
-      <span>{label}</span>
+      <div className="ra-summary-icon">
+        {icon}
+      </div>
 
-      <strong className={`${type}-text`}>
-        {value}
-      </strong>
+      <div>
+        <span>
+          {label}
+        </span>
+
+        <strong>
+          {value}
+        </strong>
+      </div>
 
     </div>
   );
