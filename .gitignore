@@ -216,3 +216,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# ReviveAI local database
+*.db
+*.sqlite
+*.sqlite3
+
+# Frontend dependencies and build files
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
