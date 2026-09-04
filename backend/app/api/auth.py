@@ -194,3 +194,90 @@ def get_current_user(
         "email": user.email,
         "is_active": user.is_active
     }
+# =====================================================
+# USER REGISTRATION
+# =====================================================
+
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException
+from backend.app.database.database import get_db
+from backend.app.models.user import User
+from pwdlib import PasswordHash
+
+registration_password_hash = PasswordHash.recommended()
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+@router.post("/register")
+def register_user(
+    data: RegisterRequest,
+    db: Session = Depends(get_db)
+):
+    username = data.username.strip()
+    email = data.email.strip().lower()
+
+    if len(username) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Username must contain at least 3 characters."
+        )
+
+    if len(data.password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain at least 6 characters."
+        )
+
+    if "@" not in email or "." not in email:
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a valid email address."
+        )
+
+    existing_username = (
+        db.query(User)
+        .filter(User.username == username)
+        .first()
+    )
+
+    if existing_username:
+        raise HTTPException(
+            status_code=400,
+            detail="Username already exists."
+        )
+
+    existing_email = (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
+
+    if existing_email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email is already registered."
+        )
+
+    new_user = User(
+    username=username,
+    email=email,
+    hashed_password=registration_password_hash.hash(
+        data.password
+    ),
+    is_active=True
+)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return {
+        "message": "Account created successfully!",
+        "username": new_user.username,
+        "email": new_user.email
+    }

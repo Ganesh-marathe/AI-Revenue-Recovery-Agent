@@ -9,6 +9,25 @@ import {
 import "./Dashboard.css";
 
 function Dashboard() {
+  // Current logged-in user
+  const storedUser = localStorage.getItem("reviveai_user");
+
+  let currentUser = null;
+
+  try {
+    currentUser = storedUser ? JSON.parse(storedUser) : null;
+  } catch {
+    currentUser = null;
+  }
+
+  const username = currentUser?.username || currentUser?.name || "User";
+
+  const displayName = username
+    .trim()
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
   const [summary, setSummary] = useState({});
   const [riskCases, setRiskCases] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -17,7 +36,6 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-
   // =========================================================
   // LOAD DATA
   // =========================================================
@@ -343,9 +361,8 @@ function Dashboard() {
             AI-POWERED OPERATIONS
           </span>
 
-          <h1>
-            Good evening, Ganesh 👋
-          </h1>
+          
+          <h1>Good evening, {displayName} 👋</h1>
 
           <p>
             Monitor revenue risk, automate recovery

@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-
 import {
   getRevenueRisk,
   getCustomers,
   analyzeRecovery,
   executeRecoveryAction,
 } from "../services/api";
-
+import "./RecoveryCases.css";
 
 function RecoveryCases() {
   const [cases, setCases] = useState([]);
@@ -21,177 +20,188 @@ function RecoveryCases() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [selectedCase, setSelectedCase] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
-
-
-  /* =========================
-     LOAD RECOVERY CASES
-  ========================= */
-
-  const loadCases = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const [riskData, customerData] =
-        await Promise.all([
-          getRevenueRisk(),
-          getCustomers(),
-        ]);
-
-      setCases(
-        Array.isArray(riskData?.cases)
-          ? riskData.cases
-          : []
-      );
-
-      setCustomers(
-        Array.isArray(customerData)
-          ? customerData
-          : Array.isArray(customerData?.customers)
-          ? customerData.customers
-          : []
-      );
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          "Recovery cases load करताना error आला."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const [caseDetails, setCaseDetails] = useState(null);
 
   useEffect(() => {
     loadCases();
   }, []);
 
+  async function loadCases() {
+    try {
+      setLoading(true);
+      setError("");
 
-  /* =========================
-     CUSTOMER NAME
-  ========================= */
+      const [riskData, customerData] = await Promise.all([
+        getRevenueRisk(),
+        getCustomers(),
+      ]);
 
-  const getCustomerName = (customerId) => {
+      const caseList = Array.isArray(riskData)
+        ? riskData
+        : riskData?.cases || [];
+
+      const customerList = Array.isArray(customerData)
+        ? customerData
+        : customerData?.customers || [];
+
+      setCases(caseList);
+      setCustomers(customerList);
+    } catch (err) {
+      console.error("Recovery cases error:", err);
+      setError(err?.message || "Unable to load recovery cases.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getCustomerName(customerId) {
     const customer = customers.find(
       (item) =>
-        item.id === customerId ||
-        item.customer_id === customerId
+        Number(item.id) === Number(customerId) ||
+        Number(item.customer_id) === Number(customerId)
     );
-
-    if (!customer) {
-      return `Customer #${customerId}`;
-    }
 
     return (
-      customer.name ||
-      customer.customer_name ||
-      customer.company_name ||
-      customer.email ||
+      customer?.name ||
+      customer?.customer_name ||
+      customer?.company_name ||
       `Customer #${customerId}`
     );
-  };
+  }
 
+  function formatCurrency(amount) {
+    return `₹${Number(amount || 0).toLocaleString("en-IN", {
+      maximumFractionDigits: 0,
+    })}`;
+  }
 
-  /* =========================
-     FILTER CASES
-  ========================= */
+  function formatDate(value) {
+    if (!value) return "-";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return String(value);
+
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  function getRiskClass(risk) {
+    const value = String(risk || "").toLowerCase();
+
+    if (value === "high") return "rc-risk-high";
+    if (value === "medium") return "rc-risk-medium";
+    if (value === "low") return "rc-risk-low";
+
+    return "rc-risk-default";
+  }
+
+  function getStatusClass(status) {
+    const value = String(status || "").toLowerCase();
+
+    if (value === "executed") return "rc-status-executed";
+    if (value === "open") return "rc-status-open";
+    if (value === "failed") return "rc-status-failed";
+
+    return "rc-status-default";
+  }
 
   const filteredCases = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+
     return cases.filter((item) => {
-      const search = searchTerm
-        .trim()
-        .toLowerCase();
+      const invoiceId = String(item.invoice_id || "").toLowerCase();
+      const customerId = String(item.customer_id || "").toLowerCase();
+      const customerName = getCustomerName(item.customer_id).toLowerCase();
 
       const matchesSearch =
         !search ||
-        String(item.case_id || item.id || "")
-          .toLowerCase()
-          .includes(search) ||
-        String(item.invoice_id || "")
-          .toLowerCase()
-          .includes(search) ||
-        getCustomerName(item.customer_id)
-          .toLowerCase()
-          .includes(search);
+        invoiceId.includes(search) ||
+        customerId.includes(search) ||
+        customerName.includes(search);
 
       const matchesRisk =
         riskFilter === "ALL" ||
-        String(item.risk_level || "")
-          .toUpperCase() === riskFilter;
+        String(item.risk_level || "").toUpperCase() === riskFilter;
 
-      return matchesSearch && matchesRisk;
+      const currentStatus =
+        item.case_status ||
+        item.status ||
+        "open";
+
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        String(currentStatus).toUpperCase() === statusFilter;
+
+      return matchesSearch && matchesRisk && matchesStatus;
     });
-  }, [
-    cases,
-    customers,
-    searchTerm,
-    riskFilter,
-  ]);
+  }, [cases, customers, searchTerm, riskFilter, statusFilter]);
 
+  const highRisk = cases.filter(
+    (item) =>
+      String(item.risk_level || "").toUpperCase() === "HIGH"
+  ).length;
 
-  /* =========================
-     OPEN CASE DETAILS
-  ========================= */
+  const mediumRisk = cases.filter(
+    (item) =>
+      String(item.risk_level || "").toUpperCase() === "MEDIUM"
+  ).length;
 
-  const handleViewDetails = async (item) => {
+  const openCases = cases.filter(
+    (item) =>
+      String(item.case_status || item.status || "open").toLowerCase() ===
+      "open"
+  ).length;
+
+  const totalRisk = cases.reduce(
+    (sum, item) => sum + Number(item.revenue_at_risk || 0),
+    0
+  );
+
+  async function handleViewCase(item) {
     try {
+      setSelectedCase(item);
+      setCaseDetails(null);
       setDetailsLoading(true);
       setError("");
       setSuccessMessage("");
 
-      setSelectedCase(item);
-      setAnalysis(null);
-
-      const invoiceId =
-        item.invoice_id ||
-        item.id;
-
-      const result =
-        await analyzeRecovery(invoiceId);
-
-      setAnalysis(result);
+      const details = await analyzeRecovery(item.invoice_id);
+      setCaseDetails(details);
     } catch (err) {
-      console.error(err);
-
+      console.error("Recovery case details error:", err);
       setError(
-        err.message ||
-          "Recovery analysis मिळवताना error आला."
+        err?.message || "Unable to load recovery case details."
       );
     } finally {
       setDetailsLoading(false);
     }
-  };
+  }
 
+  function closeCase() {
+    if (executeLoading) return;
 
-  /* =========================
-     CLOSE DETAILS
-  ========================= */
+    setSelectedCase(null);
+    setCaseDetails(null);
+    setError("");
+    setSuccessMessage("");
+  }
 
-  const handleCloseDetails = () => {
-    if (executeLoading) {
+  async function handleExecuteAction() {
+    const caseId = caseDetails?.case_id;
+
+    if (!caseId) {
+      setError("Recovery Case ID is not available.");
       return;
     }
 
-    setSelectedCase(null);
-    setAnalysis(null);
-    setError("");
-  };
-
-
-  /* =========================
-     EXECUTE ACTION
-  ========================= */
-
-  const handleExecuteAction = async () => {
-    if (!analysis?.case_id) {
-      setError(
-        "Execute करण्यासाठी Recovery Case ID मिळाला नाही."
-      );
+    if (caseDetails?.case_status === "executed") {
       return;
     }
 
@@ -200,828 +210,559 @@ function RecoveryCases() {
       setError("");
       setSuccessMessage("");
 
-      const result =
-        await executeRecoveryAction(
-          analysis.case_id
-        );
+      const result = await executeRecoveryAction(caseId);
+
+      setCaseDetails((previous) => ({
+        ...(previous || {}),
+        case_status: result?.status || "executed",
+      }));
 
       setSuccessMessage(
-        result.execution_message ||
-          result.message ||
-          "Recovery action successfully executed."
+        result?.execution_message ||
+          result?.message ||
+          "Recovery action executed successfully."
       );
-
-      setAnalysis((previous) => ({
-        ...previous,
-        case_status:
-          result.status || "executed",
-      }));
 
       await loadCases();
     } catch (err) {
-      console.error(err);
-
+      console.error("Execute recovery action error:", err);
       setError(
-        err.message ||
-          "Recovery action execute करताना error आला."
+        err?.message ||
+          "Unable to execute the recovery action."
       );
     } finally {
       setExecuteLoading(false);
     }
-  };
-
-
-  /* =========================
-     CLOSE SUCCESS MESSAGE
-  ========================= */
-
-  const clearSuccessMessage = () => {
-    setSuccessMessage("");
-  };
-
-
-  /* =========================
-     SUMMARY
-  ========================= */
-
-  const totalCases = cases.length;
-
-  const highRiskCases = cases.filter(
-    (item) =>
-      String(item.risk_level || "")
-        .toUpperCase() === "HIGH"
-  ).length;
-
-  const mediumRiskCases = cases.filter(
-    (item) =>
-      String(item.risk_level || "")
-        .toUpperCase() === "MEDIUM"
-  ).length;
-
-  const totalRevenueAtRisk =
-    cases.reduce(
-      (total, item) =>
-        total +
-        Number(
-          item.revenue_at_risk || 0
-        ),
-      0
-    );
-
-
-  /* =========================
-     CURRENCY FORMAT
-  ========================= */
-
-  const formatCurrency = (value) => {
-    return `₹${Number(value || 0).toLocaleString(
-      "en-IN"
-    )}`;
-  };
-
-
-  /* =========================
-     RISK CLASS
-  ========================= */
-
-  const getRiskClass = (risk) => {
-    const value = String(risk || "")
-      .toLowerCase();
-
-    if (value === "high") {
-      return "risk-high";
-    }
-
-    if (value === "medium") {
-      return "risk-medium";
-    }
-
-    if (value === "low") {
-      return "risk-low";
-    }
-
-    return "risk-default";
-  };
-
-
-  /* =========================
-     LOADING
-  ========================= */
+  }
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="page-header">
-          <div>
-            <span className="section-label">
-              RECOVERY OPERATIONS
-            </span>
-
-            <h1>Recovery Cases</h1>
-
-            <p>
-              AI-powered revenue recovery
-              cases and interventions.
-            </p>
-          </div>
-        </div>
-
-        <div className="loading-card">
-          <div className="loading-spinner"></div>
-
-          <p>
-            Recovery cases load होत आहेत...
-          </p>
-        </div>
+      <div className="rc-page-state">
+        <div className="rc-spinner"></div>
+        <h2>Loading Recovery Cases...</h2>
+        <p>Analyzing revenue risk and recovery opportunities.</p>
       </div>
     );
   }
 
-
   return (
-    <div className="page-container">
+    <div className="rc-page">
 
-      {/* =========================
-          HEADER
-      ========================= */}
-
-      <div className="page-header">
-
+      {/* HEADER */}
+      <section className="rc-header">
         <div>
-          <span className="section-label">
-            RECOVERY OPERATIONS
-          </span>
-
+          <span className="rc-eyebrow">AI REVENUE RECOVERY</span>
           <h1>Recovery Cases</h1>
-
           <p>
-            AI-powered revenue recovery
-            cases and interventions.
+            Manage at-risk revenue, review AI recommendations,
+            and execute recovery actions.
           </p>
         </div>
 
         <button
-          className="secondary-button"
+          className="rc-refresh-button"
           onClick={loadCases}
-          disabled={loading}
         >
           ↻ Refresh
         </button>
+      </section>
 
-      </div>
-
-
-      {/* =========================
-          ERROR
-      ========================= */}
-
+      {/* ALERTS */}
       {error && (
-        <div className="alert-error">
-          <span>⚠</span>
-
+        <div className="rc-alert rc-alert-error">
+          <span>!</span>
           <div>
-            <strong>
-              Something went wrong
-            </strong>
-
+            <strong>Action Required</strong>
             <p>{error}</p>
           </div>
-
-          <button
-            onClick={() => setError("")}
-          >
-            ×
-          </button>
+          <button onClick={() => setError("")}>×</button>
         </div>
       )}
-
-
-      {/* =========================
-          SUCCESS
-      ========================= */}
 
       {successMessage && (
-        <div className="alert-success">
-
+        <div className="rc-alert rc-alert-success">
           <span>✓</span>
-
           <div>
-            <strong>
-              Recovery Action Completed
-            </strong>
-
-            <p>
-              {successMessage}
-            </p>
+            <strong>Recovery Action Completed</strong>
+            <p>{successMessage}</p>
           </div>
-
-          <button
-            onClick={clearSuccessMessage}
-          >
-            ×
-          </button>
-
+          <button onClick={() => setSuccessMessage("")}>×</button>
         </div>
       )}
 
+      {/* KPI */}
+      <section className="rc-kpi-grid">
+        <Kpi icon="◈" label="Total Cases" value={cases.length} />
+        <Kpi icon="!" label="Open Cases" value={openCases} type="orange" />
+        <Kpi icon="▲" label="High Risk" value={highRisk} type="red" />
+        <Kpi icon="₹" label="Revenue At Risk" value={formatCurrency(totalRisk)} type="purple" />
+      </section>
 
-      {/* =========================
-          KPI CARDS
-      ========================= */}
+      {/* MAIN CARD */}
+      <section className="rc-card">
 
-      <div className="stats-grid">
-
-        <div className="stat-card">
-          <span>Total Cases</span>
-          <strong>{totalCases}</strong>
-          <small>
-            Active recovery portfolio
-          </small>
-        </div>
-
-
-        <div className="stat-card">
-          <span>High Risk</span>
-          <strong>{highRiskCases}</strong>
-          <small>
-            Requires immediate action
-          </small>
-        </div>
-
-
-        <div className="stat-card">
-          <span>Medium Risk</span>
-          <strong>{mediumRiskCases}</strong>
-          <small>
-            Requires monitoring
-          </small>
-        </div>
-
-
-        <div className="stat-card">
-          <span>Revenue at Risk</span>
-          <strong>
-            {formatCurrency(
-              totalRevenueAtRisk
-            )}
-          </strong>
-          <small>
-            Potential revenue exposure
-          </small>
-        </div>
-
-      </div>
-
-
-      {/* =========================
-          FILTER BAR
-      ========================= */}
-
-      <div className="table-toolbar">
-
-        <div className="search-box">
-
-          <span>⌕</span>
-
-          <input
-            type="text"
-            placeholder="Search case, invoice or customer..."
-            value={searchTerm}
-            onChange={(e) =>
-              setSearchTerm(e.target.value)
-            }
-          />
-
-        </div>
-
-
-        <select
-          value={riskFilter}
-          onChange={(e) =>
-            setRiskFilter(e.target.value)
-          }
-        >
-          <option value="ALL">
-            All Risk Levels
-          </option>
-
-          <option value="HIGH">
-            High Risk
-          </option>
-
-          <option value="MEDIUM">
-            Medium Risk
-          </option>
-
-          <option value="LOW">
-            Low Risk
-          </option>
-        </select>
-
-      </div>
-
-
-      {/* =========================
-          CASE TABLE
-      ========================= */}
-
-      <div className="table-card">
-
-        <div className="table-card-header">
-
+        <div className="rc-card-header">
           <div>
-            <h2>
-              Recovery Case Portfolio
-            </h2>
-
-            <p>
-              {filteredCases.length} cases
-              displayed
-            </p>
+            <h2>Recovery Case Portfolio</h2>
+            <p>Live cases requiring AI-assisted recovery decisions.</p>
           </div>
 
-          <span className="live-indicator">
-            ● LIVE DATA
-          </span>
+          <span className="rc-live">● LIVE</span>
+        </div>
+
+        {/* FILTERS */}
+        <div className="rc-toolbar">
+
+          <div className="rc-search">
+            <span>⌕</span>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search invoice or customer..."
+            />
+          </div>
+
+          <select
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value)}
+          >
+            <option value="ALL">All Risk Levels</option>
+            <option value="HIGH">High Risk</option>
+            <option value="MEDIUM">Medium Risk</option>
+            <option value="LOW">Low Risk</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">All Status</option>
+            <option value="OPEN">Open</option>
+            <option value="EXECUTED">Executed</option>
+          </select>
 
         </div>
 
+        {/* TABLE */}
+        <div className="rc-table-wrap">
+          <table className="rc-table">
+            <thead>
+              <tr>
+                <th>CASE</th>
+                <th>INVOICE</th>
+                <th>CUSTOMER</th>
+                <th>REVENUE AT RISK</th>
+                <th>RISK</th>
+                <th>AI RECOMMENDATION</th>
+                <th>STATUS</th>
+                <th></th>
+              </tr>
+            </thead>
 
-        {filteredCases.length === 0 ? (
-          <div className="empty-state">
-
-            <div className="empty-icon">
-              ✓
-            </div>
-
-            <h3>
-              No recovery cases found
-            </h3>
-
-            <p>
-              तुमच्या search किंवा filter
-              नुसार कोणतेही cases मिळाले नाहीत.
-            </p>
-
-          </div>
-        ) : (
-
-          <div className="table-wrapper">
-
-            <table>
-
-              <thead>
+            <tbody>
+              {filteredCases.length === 0 ? (
                 <tr>
-
-                  <th>CASE</th>
-                  <th>INVOICE</th>
-                  <th>CUSTOMER</th>
-                  <th>AMOUNT</th>
-                  <th>RISK</th>
-                  <th>PAYMENT</th>
-                  <th>AI ACTION</th>
-                  <th></th>
-
+                  <td colSpan="8" className="rc-empty-cell">
+                    <div className="rc-empty">
+                      <div className="rc-empty-icon">✓</div>
+                      <h3>No Recovery Cases Found</h3>
+                      <p>Try changing the search or filters.</p>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
+              ) : (
+                filteredCases.map((item, index) => {
+                  const caseId =
+                    item.case_id ||
+                    item.id ||
+                    item.invoice_id ||
+                    index + 1;
 
+                  const status =
+                    item.case_status ||
+                    item.status ||
+                    "open";
 
-              <tbody>
+                  return (
+                    <tr key={caseId}>
+                      <td>
+                        <strong>
+                          CASE-{caseId}
+                        </strong>
+                      </td>
 
-                {filteredCases.map(
-                  (item, index) => {
+                      <td>
+                        <span className="rc-invoice-id">
+                          INV-{item.invoice_id}
+                        </span>
+                      </td>
 
-                    const caseId =
-                      item.case_id ||
-                      item.id ||
-                      index + 1;
-
-                    return (
-                      <tr
-                        key={caseId}
-                      >
-
-                        <td>
-                          <strong>
-                            CASE-{caseId}
-                          </strong>
-                        </td>
-
-
-                        <td>
-                          INV-
-                          {item.invoice_id ||
-                            "N/A"}
-                        </td>
-
-
-                        <td>
-                          <div className="customer-cell">
-
-                            <div className="customer-avatar">
-                              {getCustomerName(
-                                item.customer_id
-                              )
-                                .charAt(0)
-                                .toUpperCase()}
-                            </div>
-
-                            <span>
-                              {getCustomerName(
-                                item.customer_id
-                              )}
-                            </span>
-
+                      <td>
+                        <div className="rc-customer">
+                          <div className="rc-avatar">
+                            {getCustomerName(item.customer_id)
+                              .charAt(0)
+                              .toUpperCase()}
                           </div>
-                        </td>
 
-
-                        <td>
-                          <strong>
-                            {formatCurrency(
-                              item.invoice_amount
-                            )}
-                          </strong>
-                        </td>
-
-
-                        <td>
-                          <span
-                            className={`risk-badge ${getRiskClass(
-                              item.risk_level
-                            )}`}
-                          >
-                            {item.risk_level ||
-                              "UNKNOWN"}
+                          <span>
+                            {getCustomerName(item.customer_id)}
                           </span>
-                        </td>
+                        </div>
+                      </td>
 
+                      <td>
+                        <strong>
+                          {formatCurrency(item.revenue_at_risk)}
+                        </strong>
+                      </td>
 
-                        <td>
-                          <span
-                            className={
-                              String(
-                                item.payment_status ||
-                                  ""
-                              ).toLowerCase() ===
-                              "success"
-                                ? "payment-success"
-                                : "payment-pending"
-                            }
-                          >
-                            {item.payment_status ||
-                              "Pending"}
-                          </span>
-                        </td>
+                      <td>
+                        <span className={`rc-risk ${getRiskClass(item.risk_level)}`}>
+                          {item.risk_level || "UNKNOWN"}
+                        </span>
+                      </td>
 
+                      <td>
+                        <span className="rc-action">
+                          {item.intervention_action ||
+                            item.recommended_action ||
+                            "Manual Review"}
+                        </span>
+                      </td>
 
-                        <td>
-                          <span className="ai-action">
-                            {item.intervention_action ||
-                              item.recommended_action ||
-                              "Review"}
-                          </span>
-                        </td>
+                      <td>
+                        <span className={`rc-status ${getStatusClass(status)}`}>
+                          {status}
+                        </span>
+                      </td>
 
+                      <td>
+                        <button
+                          className="rc-view-button"
+                          onClick={() => handleViewCase(item)}
+                        >
+                          Details →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                        <td>
-                          <button
-                            className="view-button"
-                            onClick={() =>
-                              handleViewDetails(
-                                item
-                              )
-                            }
-                          >
-                            View Details →
-                          </button>
-                        </td>
+        <div className="rc-table-footer">
+          Showing <strong>{filteredCases.length}</strong> of{" "}
+          <strong>{cases.length}</strong> recovery cases
+        </div>
+      </section>
 
-                      </tr>
-                    );
-                  }
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-        )}
-
-      </div>
-
-
-      {/* =========================
-          DETAILS MODAL
-      ========================= */}
-
+      {/* DETAILS MODAL */}
       {selectedCase && (
         <div
-          className="modal-overlay"
-          onClick={handleCloseDetails}
+          className="rc-modal-overlay"
+          onClick={closeCase}
         >
-
           <div
-            className="recovery-modal"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
+            className="rc-modal"
+            onClick={(e) => e.stopPropagation()}
           >
 
-            <div className="modal-header">
-
+            <div className="rc-modal-header">
               <div>
-                <span className="section-label">
-                  AI RECOVERY ANALYSIS
+                <span className="rc-eyebrow">
+                  RECOVERY CASE INTELLIGENCE
                 </span>
-
                 <h2>
-                  Recovery Case Details
+                  CASE-
+                  {caseDetails?.case_id ||
+                    selectedCase.case_id ||
+                    selectedCase.invoice_id}
                 </h2>
               </div>
 
               <button
-                className="modal-close"
-                onClick={handleCloseDetails}
+                className="rc-close"
+                onClick={closeCase}
               >
                 ×
               </button>
-
             </div>
 
-
             {detailsLoading ? (
-
-              <div className="modal-loading">
-
-                <div className="loading-spinner"></div>
-
+              <div className="rc-modal-loading">
+                <div className="rc-spinner"></div>
+                <h3>Analyzing Recovery Case...</h3>
                 <p>
-                  AI recovery analysis
-                  तयार होत आहे...
+                  ReviveAI is evaluating payment risk,
+                  diagnosis and recommended intervention.
                 </p>
-
               </div>
-
-            ) : analysis ? (
-
-              <div className="modal-content">
+            ) : (
+              <div className="rc-modal-body">
 
                 {/* CASE SUMMARY */}
+                <div className="rc-detail-summary">
 
-                <div className="detail-grid">
-
-                  <div className="detail-item">
-                    <span>Case ID</span>
+                  <div className="rc-detail-id">
+                    <span>Invoice</span>
                     <strong>
-                      CASE-{analysis.case_id}
+                      INV-
+                      {caseDetails?.invoice_id ||
+                        selectedCase.invoice_id}
                     </strong>
                   </div>
 
-                  <div className="detail-item">
-                    <span>Invoice ID</span>
-                    <strong>
-                      INV-{analysis.invoice_id}
-                    </strong>
-                  </div>
-
-                  <div className="detail-item">
+                  <div className="rc-detail-id">
                     <span>Customer</span>
                     <strong>
                       {getCustomerName(
-                        analysis.customer_id
+                        caseDetails?.customer_id ||
+                          selectedCase.customer_id
                       )}
                     </strong>
                   </div>
 
-                  <div className="detail-item">
-                    <span>Invoice Amount</span>
+                  <div className="rc-detail-id">
+                    <span>Revenue At Risk</span>
                     <strong>
                       {formatCurrency(
-                        analysis.invoice_amount
+                        caseDetails?.revenue_at_risk ??
+                          selectedCase.revenue_at_risk
                       )}
                     </strong>
                   </div>
 
-                  <div className="detail-item">
-                    <span>Payment Amount</span>
-                    <strong>
-                      {formatCurrency(
-                        analysis.payment_amount
-                      )}
-                    </strong>
-                  </div>
-
-                  <div className="detail-item">
-                    <span>Revenue at Risk</span>
-                    <strong>
-                      {formatCurrency(
-                        analysis.revenue_at_risk
-                      )}
-                    </strong>
-                  </div>
-
-                  <div className="detail-item">
+                  <div className="rc-detail-id">
                     <span>Risk Level</span>
-
-                    <span
-                      className={`risk-badge ${getRiskClass(
-                        analysis.risk_level
-                      )}`}
-                    >
-                      {analysis.risk_level}
-                    </span>
-
-                  </div>
-
-                  <div className="detail-item">
-                    <span>Status</span>
-
-                    <span className="status-badge">
-                      {analysis.case_status ||
-                        "OPEN"}
-                    </span>
-
+                    <strong>
+                      <span
+                        className={`rc-risk ${getRiskClass(
+                          caseDetails?.risk_level ||
+                            selectedCase.risk_level
+                        )}`}
+                      >
+                        {caseDetails?.risk_level ||
+                          selectedCase.risk_level ||
+                          "UNKNOWN"}
+                      </span>
+                    </strong>
                   </div>
 
                 </div>
 
-
                 {/* AI DIAGNOSIS */}
+                <div className="rc-ai-panel">
 
-                <div className="ai-panel">
-
-                  <div className="ai-panel-header">
-
-                    <div className="ai-icon">
-                      AI
-                    </div>
+                  <div className="rc-ai-title">
+                    <div className="rc-ai-icon">AI</div>
 
                     <div>
-                      <h3>
-                        AI Diagnosis
-                      </h3>
+                      <h3>AI Recovery Intelligence</h3>
+                      <p>
+                        Powered by ReviveAI Decision Engine
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rc-ai-grid">
+
+                    <div className="rc-ai-item">
+                      <span>Payment Status</span>
+                      <strong>
+                        {caseDetails?.payment_status ||
+                          "Pending"}
+                      </strong>
+                    </div>
+
+                    <div className="rc-ai-item">
+                      <span>Payment Amount</span>
+                      <strong>
+                        {formatCurrency(
+                          caseDetails?.payment_amount
+                        )}
+                      </strong>
+                    </div>
+
+                    <div className="rc-ai-item rc-ai-wide">
+                      <span>Diagnosis</span>
+                      <p>
+                        {caseDetails?.diagnosis ||
+                          "No diagnosis available."}
+                      </p>
+                    </div>
+
+                    <div className="rc-ai-item rc-ai-wide">
+                      <span>Recommended Action</span>
+                      <strong>
+                        {caseDetails?.intervention_action ||
+                          caseDetails?.recommended_action ||
+                          "Manual Review"}
+                      </strong>
 
                       <p>
-                        ReviveAI Decision Engine
+                        {caseDetails?.intervention_message ||
+                          "AI recommendation based on current payment risk."}
                       </p>
                     </div>
 
                   </div>
-
-
-                  <div className="ai-diagnosis">
-
-                    <span>
-                      Problem Diagnosis
-                    </span>
-
-                    <p>
-                      {analysis.diagnosis ||
-                        "No diagnosis available."}
-                    </p>
-
-                  </div>
-
-
-                  <div className="ai-recommendation">
-
-                    <span>
-                      Recommended Action
-                    </span>
-
-                    <strong>
-                      {analysis.recommended_action ||
-                        analysis.intervention_action ||
-                        "Manual Review"}
-                    </strong>
-
-                    <p>
-                      {analysis.intervention_message ||
-                        "Recovery action recommended based on payment risk."}
-                    </p>
-
-                  </div>
-
                 </div>
 
+                {/* TIMELINE */}
+                <div className="rc-timeline-section">
+
+                  <div className="rc-section-heading">
+                    <h3>Recovery Timeline</h3>
+                    <p>
+                      Track the case from risk detection
+                      to recovery execution.
+                    </p>
+                  </div>
+
+                  <div className="rc-timeline">
+
+                    <TimelineItem
+                      number="1"
+                      title="Invoice Created"
+                      text="Invoice entered into ReviveAI monitoring."
+                      completed
+                    />
+
+                    <TimelineLine />
+
+                    <TimelineItem
+                      number="2"
+                      title="Payment Risk Detected"
+                      text={`${caseDetails?.risk_level || selectedCase.risk_level || "MEDIUM"} risk identified from payment signals.`}
+                      completed
+                    />
+
+                    <TimelineLine />
+
+                    <TimelineItem
+                      number="3"
+                      title="AI Diagnosis"
+                      text={
+                        caseDetails?.diagnosis ||
+                        "AI diagnosis generated for the recovery case."
+                      }
+                      completed={Boolean(caseDetails?.case_id)}
+                    />
+
+                    <TimelineLine />
+
+                    <TimelineItem
+                      number="4"
+                      title="Recovery Action"
+                      text={
+                        caseDetails?.case_status === "executed"
+                          ? "Recovery action executed successfully."
+                          : "Recovery action is waiting for execution."
+                      }
+                      completed={
+                        caseDetails?.case_status === "executed"
+                      }
+                    />
+
+                  </div>
+                </div>
 
                 {/* ACTION */}
-
-                <div className="action-section">
+                <div className="rc-action-panel">
 
                   <div>
+                    <span className="rc-action-label">
+                      NEXT BEST ACTION
+                    </span>
 
                     <h3>
-                      Recovery Intervention
+                      {caseDetails?.intervention_action ||
+                        caseDetails?.recommended_action ||
+                        "Manual Review"}
                     </h3>
 
                     <p>
-                      AI ने सुचवलेली action
-                      execute करण्यासाठी खालील
-                      button वापरा.
+                      Execute the AI-selected recovery
+                      intervention when ready.
                     </p>
-
                   </div>
 
-
                   <button
-                    className="execute-button"
-                    onClick={
-                      handleExecuteAction
-                    }
+                    className="rc-execute-button"
+                    onClick={handleExecuteAction}
                     disabled={
                       executeLoading ||
-                      analysis.case_status !==
-                        "open"
+                      caseDetails?.case_status === "executed"
                     }
                   >
-
-                    {executeLoading ? (
-                      <>
-                        <span className="button-spinner"></span>
-                        Executing...
-                      </>
-                    ) : analysis.case_status ===
-                      "executed" ? (
-                      "✓ Action Executed"
-                    ) : (
-                      "Execute Recovery Action"
-                    )}
-
+                    {executeLoading
+                      ? "Executing..."
+                      : caseDetails?.case_status === "executed"
+                      ? "✓ Action Executed"
+                      : "Execute Recovery Action"}
                   </button>
 
                 </div>
 
-
-                {/* INTERVENTION INFO */}
-
-                <div className="intervention-grid">
-
-                  <div>
-                    <span>
-                      AI Action
-                    </span>
-
-                    <strong>
-                      {analysis.intervention_action ||
-                        "N/A"}
-                    </strong>
-                  </div>
-
-
-                  <div>
-                    <span>
-                      Priority
-                    </span>
-
-                    <strong>
-                      {analysis.intervention_priority ||
-                        "N/A"}
-                    </strong>
-                  </div>
-
-
-                  <div>
-                    <span>
-                      Payment Status
-                    </span>
-
-                    <strong>
-                      {analysis.payment_status ||
-                        "N/A"}
-                    </strong>
-                  </div>
-
-                </div>
-
               </div>
-
-            ) : (
-
-              <div className="empty-state">
-
-                <h3>
-                  Analysis unavailable
-                </h3>
-
-                <p>
-                  Recovery analysis मिळू शकले नाही.
-                </p>
-
-              </div>
-
             )}
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
 
+
+// ============================================================
+// KPI
+// ============================================================
+
+function Kpi({ icon, label, value, type = "" }) {
+  return (
+    <div className="rc-kpi">
+      <div className={`rc-kpi-icon ${type}`}>
+        {icon}
+      </div>
+
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================
+// TIMELINE
+// ============================================================
+
+function TimelineItem({
+  number,
+  title,
+  text,
+  completed,
+}) {
+  return (
+    <div className={`rc-timeline-item ${completed ? "completed" : ""}`}>
+      <div className="rc-timeline-dot">
+        {completed ? "✓" : number}
+      </div>
+
+      <div>
+        <strong>{title}</strong>
+        <p>{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function TimelineLine() {
+  return <div className="rc-timeline-line"></div>;
+}
 
 export default RecoveryCases;

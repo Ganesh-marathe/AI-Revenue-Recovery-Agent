@@ -2,68 +2,141 @@ import React from "react";
 import "./Navbar.css";
 
 function Navbar({ onLogout }) {
+  // ==========================================================
+  // GET CURRENT LOGGED-IN USER
+  // ==========================================================
+
+  const storedUser = localStorage.getItem("reviveai_user");
+
+  let currentUser = null;
+
+  try {
+    currentUser = storedUser
+      ? JSON.parse(storedUser)
+      : null;
+  } catch {
+    currentUser = null;
+  }
+
+  // Username from logged-in account
+  const username =
+    currentUser?.username ||
+    currentUser?.name ||
+    "User";
+
+
+  // ==========================================================
+  // FORMAT DISPLAY NAME
+  // ==========================================================
+
+  const displayName = username
+    .trim()
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) =>
+      char.toUpperCase()
+    );
+
+
+  // ==========================================================
+  // CREATE INITIALS
+  // ==========================================================
+
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+
+
+  // ==========================================================
+  // NAVBAR
+  // ==========================================================
+
   return (
     <header className="navbar">
 
-      <div className="navbar-left">
+      {/* ------------------------------------------------------
+          BRAND
+      ------------------------------------------------------ */}
 
-        <div className="mobile-menu">
-          ☰
+      <div className="navbar-brand">
+
+        <div className="navbar-eyebrow">
+          AI-POWERED OPERATIONS
         </div>
 
-        <div className="page-title">
-          <span>AI-POWERED OPERATIONS</span>
-          <h2>Revenue Recovery Intelligence</h2>
+        <div className="navbar-title">
+          Revenue Recovery Intelligence
         </div>
 
       </div>
 
 
-      <div className="navbar-right">
+      {/* ------------------------------------------------------
+          RIGHT SIDE
+      ------------------------------------------------------ */}
+
+      <div className="navbar-actions">
+
+        {/* Search */}
 
         <button
-          className="nav-icon"
+          className="navbar-icon-button"
           title="Search"
+          type="button"
         >
           ⌕
         </button>
 
 
+        {/* Notifications */}
+
         <button
-          className="nav-icon notification"
+          className="navbar-icon-button"
           title="Notifications"
+          type="button"
         >
           ♧
-          <span className="notification-dot"></span>
         </button>
 
 
-        <div className="nav-divider"></div>
+        {/* --------------------------------------------------
+            USER
+        -------------------------------------------------- */}
 
+        <div className="navbar-user">
 
-        <div className="user-profile">
-
-          <div className="user-avatar">
-            GM
+          <div className="navbar-avatar">
+            {initials || "U"}
           </div>
 
-          <div className="user-info">
-            <strong>Ganesh Marathe</strong>
-            <span>Administrator</span>
-          </div>
 
-          <span className="user-arrow">
-            ⌄
-          </span>
+          <div className="navbar-user-info">
+
+            <div className="navbar-user-name">
+              {displayName}
+            </div>
+
+            <div className="navbar-user-role">
+              Administrator
+            </div>
+
+          </div>
 
         </div>
 
 
-        {/* Logout Button */}
+        {/* --------------------------------------------------
+            LOGOUT
+        -------------------------------------------------- */}
+
         <button
           className="logout-button"
           onClick={onLogout}
-          title="Logout"
+          type="button"
         >
           Logout
         </button>
@@ -73,5 +146,6 @@ function Navbar({ onLogout }) {
     </header>
   );
 }
+
 
 export default Navbar;

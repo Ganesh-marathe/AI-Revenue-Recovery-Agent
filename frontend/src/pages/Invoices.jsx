@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+
 import {
   getRevenueRisk,
   getCustomers,
@@ -7,7 +8,9 @@ import {
   analyzeRecovery,
   executeRecoveryAction,
 } from "../services/api";
-  import "./invoice.css";
+
+import "./invoice.css";
+
 function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -27,63 +30,58 @@ function Invoices() {
   const [paymentHistory, setPaymentHistory] = useState(null);
   const [analysis, setAnalysis] = useState(null);
 
-
-  /* =====================================================
-     LOAD INVOICES
-  ===================================================== */
+  // ==========================================================
+  // LOAD INVOICES
+  // ==========================================================
 
   useEffect(() => {
     loadInvoices();
   }, []);
-
 
   async function loadInvoices() {
     try {
       setLoading(true);
       setError("");
 
-      const [riskData, customerData] =
-        await Promise.all([
-          getRevenueRisk(),
-          getCustomers(),
-        ]);
+      const [riskData, customerData] = await Promise.all([
+        getRevenueRisk(),
+        getCustomers(),
+      ]);
 
-      setInvoices(
-        Array.isArray(riskData?.cases)
-          ? riskData.cases
-          : []
-      );
+      const cases = Array.isArray(riskData)
+        ? riskData
+        : Array.isArray(riskData?.cases)
+        ? riskData.cases
+        : [];
 
-      setCustomers(
-        Array.isArray(customerData?.customers)
-          ? customerData.customers
-          : Array.isArray(customerData)
-          ? customerData
-          : []
-      );
+      const customerList = Array.isArray(customerData)
+        ? customerData
+        : Array.isArray(customerData?.customers)
+        ? customerData.customers
+        : [];
 
+      setInvoices(cases);
+      setCustomers(customerList);
     } catch (err) {
-      console.error(err);
+      console.error("Invoice load error:", err);
 
       setError(
-        err.message ||
-          "Unable to load invoices."
+        err?.message || "Unable to load invoices."
       );
     } finally {
       setLoading(false);
     }
   }
 
-
-  /* =====================================================
-     CUSTOMER NAME
-  ===================================================== */
+  // ==========================================================
+  // CUSTOMER NAME
+  // ==========================================================
 
   function getCustomerName(customerId) {
     const customer = customers.find(
       (item) =>
-        item.id === customerId ||
-        item.customer_id === customerId
+        Number(item.id) === Number(customerId) ||
+        Number(item.customer_id) === Number(customerId)
     );
 
     if (!customer) {
@@ -99,31 +97,23 @@ function Invoices() {
     );
   }
 
-
-  /* =====================================================
-     CURRENCY
-  ===================================================== */
+  // ==========================================================
+  // FORMATTERS
+  // ==========================================================
 
   function formatCurrency(amount) {
-    return `₹${Number(amount || 0).toLocaleString(
-      "en-IN"
-    )}`;
+    return `₹${Number(amount || 0).toLocaleString("en-IN", {
+      maximumFractionDigits: 0,
+    })}`;
   }
 
-
-  /* =====================================================
-     DATE
-  ===================================================== */
-
   function formatDate(dateValue) {
-    if (!dateValue) {
-      return "-";
-    }
+    if (!dateValue) return "-";
 
     const date = new Date(dateValue);
 
     if (Number.isNaN(date.getTime())) {
-      return dateValue;
+      return String(dateValue);
     }
 
     return date.toLocaleDateString("en-IN", {
@@ -133,152 +123,124 @@ function Invoices() {
     });
   }
 
+  function formatDateTime(dateValue) {
+    if (!dateValue) return "-";
 
-  /* =====================================================
-     RISK CLASS
-  ===================================================== */
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+      return String(dateValue);
+    }
+
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  // ==========================================================
+  // STATUS HELPERS
+  // ==========================================================
 
   function getRiskClass(risk) {
-    const value = String(risk || "")
-      .toLowerCase();
+    const value = String(risk || "").toLowerCase();
 
-    if (value === "high") {
-      return "risk-high";
-    }
-
-    if (value === "medium") {
-      return "risk-medium";
-    }
-
-    if (value === "low") {
-      return "risk-low";
-    }
+    if (value === "high") return "risk-high";
+    if (value === "medium") return "risk-medium";
+    if (value === "low") return "risk-low";
 
     return "risk-default";
   }
 
-
-  /* =====================================================
-     PAYMENT CLASS
-  ===================================================== */
-
   function getPaymentClass(status) {
-    const value = String(status || "")
-      .toLowerCase();
+    const value = String(status || "").toLowerCase();
 
-    if (value === "success") {
-      return "payment-success";
-    }
-
-    if (value === "failed") {
-      return "payment-failed";
-    }
-
-    if (value === "pending") {
-      return "payment-pending";
-    }
+    if (value === "success") return "payment-success";
+    if (value === "failed") return "payment-failed";
+    if (value === "pending") return "payment-pending";
 
     return "payment-default";
   }
 
+  function getPaymentIcon(status) {
+    return String(status || "").toLowerCase() === "success"
+      ? "✓"
+      : "!";
+  }
 
-  /* =====================================================
-     SEARCH + FILTER
-  ===================================================== */
+  // ==========================================================
+  // SEARCH + FILTER
+  // ==========================================================
 
   const filteredInvoices = useMemo(() => {
-    const search = searchTerm
-      .trim()
-      .toLowerCase();
+    const search = searchTerm.trim().toLowerCase();
 
     return invoices.filter((item) => {
+      const invoiceId = String(item.invoice_id || "").toLowerCase();
+      const customerId = String(item.customer_id || "").toLowerCase();
+      const customerName = getCustomerName(item.customer_id).toLowerCase();
 
       const matchesSearch =
         !search ||
-        String(item.invoice_id || "")
-          .toLowerCase()
-          .includes(search) ||
-        String(item.customer_id || "")
-          .toLowerCase()
-          .includes(search) ||
-        getCustomerName(item.customer_id)
-          .toLowerCase()
-          .includes(search);
+        invoiceId.includes(search) ||
+        customerId.includes(search) ||
+        customerName.includes(search);
 
       const matchesRisk =
         riskFilter === "ALL" ||
-        String(item.risk_level || "")
-          .toUpperCase() === riskFilter;
+        String(item.risk_level || "").toUpperCase() === riskFilter;
 
-      return (
-        matchesSearch &&
-        matchesRisk
-      );
+      return matchesSearch && matchesRisk;
     });
+  }, [invoices, customers, searchTerm, riskFilter]);
 
-  }, [
-    invoices,
-    customers,
-    searchTerm,
-    riskFilter,
-  ]);
-
-
-  /* =====================================================
-     VIEW INVOICE DETAILS
-  ===================================================== */
+  // ==========================================================
+  // VIEW INVOICE DETAILS
+  // ==========================================================
 
   async function handleViewDetails(item) {
     try {
       setSelectedInvoice(item);
-
       setInvoiceDetails(null);
       setPaymentHistory(null);
       setAnalysis(null);
 
       setSuccessMessage("");
       setError("");
-
       setDetailsLoading(true);
 
-      const invoiceId =
-        item.invoice_id;
+      const invoiceId = item.invoice_id;
 
-      const [
-        invoiceData,
-        paymentsData,
-        analysisData,
-      ] = await Promise.all([
-        getInvoice(invoiceId),
-        getInvoicePayments(invoiceId),
-        analyzeRecovery(invoiceId),
-      ]);
+      const [invoiceData, paymentsData, analysisData] =
+        await Promise.all([
+          getInvoice(invoiceId),
+          getInvoicePayments(invoiceId),
+          analyzeRecovery(invoiceId),
+        ]);
 
       setInvoiceDetails(invoiceData);
       setPaymentHistory(paymentsData);
       setAnalysis(analysisData);
-
     } catch (err) {
-      console.error(err);
+      console.error("Invoice details error:", err);
 
       setError(
-        err.message ||
-          "Unable to load invoice details."
+        err?.message || "Unable to load invoice details."
       );
     } finally {
       setDetailsLoading(false);
     }
   }
 
-
-  /* =====================================================
-     CLOSE MODAL
-  ===================================================== */
+  // ==========================================================
+  // CLOSE MODAL
+  // ==========================================================
 
   function handleCloseDetails() {
-    if (executeLoading) {
-      return;
-    }
+    if (executeLoading) return;
 
     setSelectedInvoice(null);
     setInvoiceDetails(null);
@@ -286,53 +248,49 @@ function Invoices() {
     setAnalysis(null);
 
     setError("");
+    setSuccessMessage("");
   }
 
-
-  /* =====================================================
-     EXECUTE RECOVERY ACTION
-  ===================================================== */
+  // ==========================================================
+  // EXECUTE RECOVERY ACTION
+  // ==========================================================
 
   async function handleExecuteAction() {
-
     if (!analysis?.case_id) {
-      setError(
-        "Recovery Case ID उपलब्ध नाही."
-      );
+      setError("Recovery Case ID उपलब्ध नाही.");
+      return;
+    }
+
+    if (analysis.case_status === "executed") {
       return;
     }
 
     try {
       setExecuteLoading(true);
-
       setError("");
       setSuccessMessage("");
 
-      const result =
-        await executeRecoveryAction(
-          analysis.case_id
-        );
+      const result = await executeRecoveryAction(
+        analysis.case_id
+      );
 
       setSuccessMessage(
-        result.execution_message ||
-          result.message ||
+        result?.execution_message ||
+          result?.message ||
           "Recovery action executed successfully."
       );
 
       setAnalysis((previous) => ({
-        ...previous,
-        case_status:
-          result.status ||
-          "executed",
+        ...(previous || {}),
+        case_status: result?.status || "executed",
       }));
 
       await loadInvoices();
-
     } catch (err) {
-      console.error(err);
+      console.error("Recovery action error:", err);
 
       setError(
-        err.message ||
+        err?.message ||
           "Recovery action execute करताना error आला."
       );
     } finally {
@@ -340,88 +298,66 @@ function Invoices() {
     }
   }
 
+  // ==========================================================
+  // KPI CALCULATIONS
+  // ==========================================================
 
-  /* =====================================================
-     KPI CALCULATIONS
-  ===================================================== */
+  const totalInvoices = invoices.length;
 
-  const totalInvoices =
-    invoices.length;
+  const failedInvoices = invoices.filter(
+    (item) =>
+      String(item.payment_status || "").toLowerCase() === "failed"
+  ).length;
 
-  const failedInvoices =
-    invoices.filter(
-      (item) =>
-        String(item.payment_status)
-          .toLowerCase() === "failed"
-    ).length;
+  const pendingInvoices = invoices.filter(
+    (item) =>
+      String(item.payment_status || "").toLowerCase() === "pending"
+  ).length;
 
-  const pendingInvoices =
-    invoices.filter(
-      (item) =>
-        String(item.payment_status)
-          .toLowerCase() === "pending"
-    ).length;
+  const successfulInvoices = invoices.filter(
+    (item) =>
+      String(item.payment_status || "").toLowerCase() === "success"
+  ).length;
 
-  const totalRisk =
-    invoices.reduce(
-      (sum, item) =>
-        sum +
-        Number(
-          item.revenue_at_risk || 0
-        ),
-      0
-    );
+  const totalRisk = invoices.reduce(
+    (sum, item) =>
+      sum + Number(item.revenue_at_risk || 0),
+    0
+  );
 
-
-  /* =====================================================
-     LOADING
-  ===================================================== */
+  // ==========================================================
+  // LOADING
+  // ==========================================================
 
   if (loading) {
     return (
       <div className="invoice-page">
-
         <div className="invoice-loading">
-
           <div className="invoice-spinner"></div>
 
-          <h2>
-            Loading Invoices...
-          </h2>
+          <h2>Loading Invoices...</h2>
 
           <p>
-            Fetching invoice and payment
-            information.
+            Fetching invoice and payment information.
           </p>
-
         </div>
-
       </div>
     );
   }
 
-
-  /* =====================================================
-     ERROR
-  ===================================================== */
+  // ==========================================================
+  // FULL PAGE ERROR
+  // ==========================================================
 
   if (error && invoices.length === 0) {
     return (
       <div className="invoice-page">
-
         <div className="invoice-error">
+          <div className="invoice-error-icon">!</div>
 
-          <div className="invoice-error-icon">
-            !
-          </div>
+          <h2>Unable to Load Invoices</h2>
 
-          <h2>
-            Unable to Load Invoices
-          </h2>
-
-          <p>
-            {error}
-          </p>
+          <p>{error}</p>
 
           <button
             className="invoice-primary-button"
@@ -429,40 +365,32 @@ function Invoices() {
           >
             Try Again
           </button>
-
         </div>
-
       </div>
     );
   }
 
+  // ==========================================================
+  // PAGE
+  // ==========================================================
 
   return (
     <div className="invoice-page">
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
+      {/* HEADER */}
       <section className="invoice-header">
-
         <div>
-
           <span className="invoice-eyebrow">
             REVENUE OPERATIONS
           </span>
 
-          <h1>
-            Invoices
-          </h1>
+          <h1>Invoices</h1>
 
           <p>
-            Monitor invoice amounts, payment
-            status and revenue risk.
+            Monitor invoice amounts, payment status and
+            revenue risk.
           </p>
-
         </div>
-
 
         <button
           className="invoice-refresh"
@@ -471,217 +399,129 @@ function Invoices() {
         >
           ↻ Refresh
         </button>
-
       </section>
 
 
-      {/* =================================================
-          ERROR MESSAGE
-      ================================================= */}
-
+      {/* ERROR ALERT */}
       {error && invoices.length > 0 && (
         <div className="invoice-alert error">
-
           <span>!</span>
 
           <div>
-            <strong>
-              Something went wrong
-            </strong>
+            <strong>Something went wrong</strong>
 
-            <p>
-              {error}
-            </p>
+            <p>{error}</p>
           </div>
 
-          <button
-            onClick={() => setError("")}
-          >
+          <button onClick={() => setError("")}>
             ×
           </button>
-
         </div>
       )}
 
 
-      {/* =================================================
-          SUCCESS MESSAGE
-      ================================================= */}
-
+      {/* SUCCESS ALERT */}
       {successMessage && (
         <div className="invoice-alert success">
-
           <span>✓</span>
 
           <div>
-            <strong>
-              Recovery Action Completed
-            </strong>
+            <strong>Recovery Action Completed</strong>
 
-            <p>
-              {successMessage}
-            </p>
+            <p>{successMessage}</p>
           </div>
 
           <button
-            onClick={() =>
-              setSuccessMessage("")
-            }
+            onClick={() => setSuccessMessage("")}
           >
             ×
           </button>
-
         </div>
       )}
 
 
-      {/* =================================================
-          KPI CARDS
-      ================================================= */}
-
+      {/* KPI CARDS */}
       <section className="invoice-kpi-grid">
 
         <div className="invoice-kpi-card">
-
           <div className="invoice-kpi-icon">
             ▤
           </div>
 
           <div>
-
-            <span>
-              Total Invoices
-            </span>
-
-            <strong>
-              {totalInvoices}
-            </strong>
-
-            <small>
-              Invoices under monitoring
-            </small>
-
+            <span>Total Invoices</span>
+            <strong>{totalInvoices}</strong>
+            <small>Invoices under monitoring</small>
           </div>
-
         </div>
 
 
         <div className="invoice-kpi-card">
-
           <div className="invoice-kpi-icon failed">
             !
           </div>
 
           <div>
-
-            <span>
-              Failed Payments
-            </span>
-
-            <strong>
-              {failedInvoices}
-            </strong>
-
-            <small>
-              Require retry action
-            </small>
-
+            <span>Failed Payments</span>
+            <strong>{failedInvoices}</strong>
+            <small>Require retry action</small>
           </div>
-
         </div>
 
 
         <div className="invoice-kpi-card">
-
           <div className="invoice-kpi-icon pending">
             ↓
           </div>
 
           <div>
-
-            <span>
-              Pending Payments
-            </span>
-
-            <strong>
-              {pendingInvoices}
-            </strong>
-
-            <small>
-              Require follow-up
-            </small>
-
+            <span>Pending Payments</span>
+            <strong>{pendingInvoices}</strong>
+            <small>Require follow-up</small>
           </div>
-
         </div>
 
 
         <div className="invoice-kpi-card">
-
           <div className="invoice-kpi-icon revenue">
             ₹
           </div>
 
           <div>
-
-            <span>
-              Revenue At Risk
-            </span>
-
-            <strong>
-              {formatCurrency(totalRisk)}
-            </strong>
-
+            <span>Revenue At Risk</span>
+            <strong>{formatCurrency(totalRisk)}</strong>
             <small>
-              Potential recovery
+              {successfulInvoices} successful payments
             </small>
-
           </div>
-
         </div>
 
       </section>
 
 
-      {/* =================================================
-          INVOICE CARD
-      ================================================= */}
-
+      {/* INVOICE MONITORING */}
       <section className="invoice-card">
 
         <div className="invoice-card-header">
-
           <div>
-
-            <h2>
-              Invoice Monitoring
-            </h2>
+            <h2>Invoice Monitoring</h2>
 
             <p>
-              Live invoice risk information
-              from ReviveAI.
+              Live invoice risk information from ReviveAI.
             </p>
-
           </div>
 
           <span className="invoice-live">
             ● LIVE DATA
           </span>
-
         </div>
 
 
-        {/* =================================================
-            TOOLBAR
-        ================================================= */}
-
+        {/* TOOLBAR */}
         <div className="invoice-toolbar">
 
           <div className="invoice-search">
-
-            <span>
-              ⌕
-            </span>
+            <span>⌕</span>
 
             <input
               type="text"
@@ -691,7 +531,6 @@ function Invoices() {
                 setSearchTerm(e.target.value)
               }
             />
-
           </div>
 
 
@@ -701,7 +540,6 @@ function Invoices() {
               setRiskFilter(e.target.value)
             }
           >
-
             <option value="ALL">
               All Risk Levels
             </option>
@@ -717,54 +555,26 @@ function Invoices() {
             <option value="LOW">
               Low Risk
             </option>
-
           </select>
 
         </div>
 
 
-        {/* =================================================
-            TABLE
-        ================================================= */}
-
+        {/* TABLE */}
         <div className="invoice-table-wrapper">
 
           <table className="invoice-table">
 
             <thead>
-
               <tr>
-
-                <th>
-                  INVOICE
-                </th>
-
-                <th>
-                  CUSTOMER
-                </th>
-
-                <th>
-                  INVOICE AMOUNT
-                </th>
-
-                <th>
-                  PAYMENT
-                </th>
-
-                <th>
-                  REVENUE RISK
-                </th>
-
-                <th>
-                  RISK LEVEL
-                </th>
-
-                <th>
-                  DETAILS
-                </th>
-
+                <th>INVOICE</th>
+                <th>CUSTOMER</th>
+                <th>INVOICE AMOUNT</th>
+                <th>PAYMENT</th>
+                <th>REVENUE RISK</th>
+                <th>RISK LEVEL</th>
+                <th>DETAILS</th>
               </tr>
-
             </thead>
 
 
@@ -773,89 +583,71 @@ function Invoices() {
               {filteredInvoices.length === 0 ? (
 
                 <tr>
-
                   <td
                     colSpan="7"
                     className="invoice-empty-cell"
                   >
-
                     <div className="invoice-empty">
 
                       <div className="invoice-empty-icon">
                         ✓
                       </div>
 
-                      <h3>
-                        No Invoices Found
-                      </h3>
+                      <h3>No Invoices Found</h3>
 
                       <p>
-                        तुमच्या search किंवा
-                        filter नुसार invoice
-                        मिळाले नाहीत.
+                        तुमच्या search किंवा filter
+                        नुसार invoice मिळाले नाहीत.
                       </p>
 
                     </div>
-
                   </td>
-
                 </tr>
 
               ) : (
 
-                filteredInvoices.map(
-                  (item) => (
+                filteredInvoices.map((item) => {
 
-                    <tr
-                      key={item.invoice_id}
-                    >
+                  const customerName =
+                    getCustomerName(item.customer_id);
+
+                  return (
+                    <tr key={item.invoice_id}>
 
                       <td>
-
                         <strong className="invoice-id">
-                          INV-
-                          {item.invoice_id}
+                          INV-{item.invoice_id}
                         </strong>
-
                       </td>
 
 
                       <td>
-
                         <div className="invoice-customer">
 
                           <div className="invoice-avatar">
-                            {getCustomerName(
-                              item.customer_id
-                            )
+                            {customerName
                               .charAt(0)
                               .toUpperCase()}
                           </div>
 
                           <span>
-                            {getCustomerName(
-                              item.customer_id
-                            )}
+                            {customerName}
                           </span>
 
                         </div>
-
                       </td>
 
 
                       <td>
-
                         <strong>
                           {formatCurrency(
                             item.invoice_amount
                           )}
                         </strong>
-
                       </td>
 
 
                       <td>
-
                         <span
                           className={`invoice-payment ${getPaymentClass(
                             item.payment_status
@@ -864,23 +656,19 @@ function Invoices() {
                           {item.payment_status ||
                             "Unknown"}
                         </span>
-
                       </td>
 
 
                       <td>
-
                         <strong>
                           {formatCurrency(
                             item.revenue_at_risk
                           )}
                         </strong>
-
                       </td>
 
 
                       <td>
-
                         <span
                           className={`invoice-risk ${getRiskClass(
                             item.risk_level
@@ -889,30 +677,23 @@ function Invoices() {
                           {item.risk_level ||
                             "Unknown"}
                         </span>
-
                       </td>
 
 
                       <td>
-
                         <button
                           className="invoice-view-button"
                           onClick={() =>
-                            handleViewDetails(
-                              item
-                            )
+                            handleViewDetails(item)
                           }
                         >
                           View Details →
                         </button>
-
                       </td>
 
                     </tr>
-
-                  )
-                )
-
+                  );
+                })
               )}
 
             </tbody>
@@ -924,11 +705,12 @@ function Invoices() {
       </section>
 
 
-      {/* =================================================
+      {/* ======================================================
           INVOICE DETAILS MODAL
-      ================================================= */}
+      ====================================================== */}
 
       {selectedInvoice && (
+
         <div
           className="invoice-modal-overlay"
           onClick={handleCloseDetails}
@@ -942,7 +724,6 @@ function Invoices() {
           >
 
             {/* MODAL HEADER */}
-
             <div className="invoice-modal-header">
 
               <div>
@@ -957,9 +738,11 @@ function Invoices() {
 
               </div>
 
+
               <button
                 className="invoice-modal-close"
                 onClick={handleCloseDetails}
+                type="button"
               >
                 ×
               </button>
@@ -967,6 +750,7 @@ function Invoices() {
             </div>
 
 
+            {/* MODAL LOADING */}
             {detailsLoading ? (
 
               <div className="invoice-modal-loading">
@@ -988,17 +772,12 @@ function Invoices() {
 
               <div className="invoice-modal-content">
 
-                {/* =================================================
-                    INVOICE SUMMARY
-                ================================================= */}
-
+                {/* INVOICE SUMMARY */}
                 <div className="invoice-detail-top">
 
                   <div>
 
-                    <span>
-                      Invoice
-                    </span>
+                    <span>Invoice</span>
 
                     <strong>
                       INV-
@@ -1011,10 +790,10 @@ function Invoices() {
 
                   <span
                     className={`invoice-risk ${getRiskClass(
-                      invoiceDetails?.status ===
-                        "paid"
+                      invoiceDetails?.status === "paid"
                         ? "low"
-                        : analysis?.risk_level
+                        : analysis?.risk_level ||
+                          selectedInvoice.risk_level
                     )}`}
                   >
                     {analysis?.risk_level ||
@@ -1025,17 +804,11 @@ function Invoices() {
                 </div>
 
 
-                {/* =================================================
-                    DETAIL GRID
-                ================================================= */}
-
+                {/* DETAIL GRID */}
                 <div className="invoice-detail-grid">
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Customer
-                    </span>
+                    <span>Customer</span>
 
                     <strong>
                       {invoiceDetails?.customer_name ||
@@ -1043,123 +816,89 @@ function Invoices() {
                           selectedInvoice.customer_id
                         )}
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Invoice Amount
-                    </span>
+                    <span>Invoice Amount</span>
 
                     <strong>
                       {formatCurrency(
-                        invoiceDetails?.amount ||
+                        invoiceDetails?.amount ??
                           selectedInvoice.invoice_amount
                       )}
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Due Date
-                    </span>
+                    <span>Due Date</span>
 
                     <strong>
                       {formatDate(
                         invoiceDetails?.due_date
                       )}
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Days Overdue
-                    </span>
+                    <span>Days Overdue</span>
 
                     <strong>
-                      {invoiceDetails?.days_overdue ??
-                        0}{" "}
-                      days
+                      {invoiceDetails?.days_overdue ?? 0} days
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Payment Status
-                    </span>
+                    <span>Payment Status</span>
 
                     <strong>
                       {analysis?.payment_status ||
                         selectedInvoice.payment_status ||
                         "Unknown"}
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Payment Amount
-                    </span>
+                    <span>Payment Amount</span>
 
                     <strong>
                       {formatCurrency(
                         analysis?.payment_amount
                       )}
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Revenue At Risk
-                    </span>
+                    <span>Revenue At Risk</span>
 
                     <strong>
                       {formatCurrency(
-                        analysis?.revenue_at_risk ||
+                        analysis?.revenue_at_risk ??
                           selectedInvoice.revenue_at_risk
                       )}
                     </strong>
-
                   </div>
 
 
                   <div className="invoice-detail-item">
-
-                    <span>
-                      Recovery Case
-                    </span>
+                    <span>Recovery Case</span>
 
                     <strong>
                       {analysis?.case_id
                         ? `CASE-${analysis.case_id}`
                         : "Not Created"}
                     </strong>
-
                   </div>
 
                 </div>
 
 
-                {/* =================================================
-                    PAYMENT HISTORY
-                ================================================= */}
-
+                {/* PAYMENT HISTORY */}
                 <div className="invoice-section">
 
                   <div className="invoice-section-header">
@@ -1178,9 +917,7 @@ function Invoices() {
                     </div>
 
                     <span>
-                      {paymentHistory?.payment_count ||
-                        0}{" "}
-                      attempts
+                      {paymentHistory?.payment_count || 0} attempts
                     </span>
 
                   </div>
@@ -1195,40 +932,37 @@ function Invoices() {
 
                           <div
                             className="payment-row"
-                            key={
-                              payment.payment_id
-                            }
+                            key={payment.payment_id}
                           >
 
                             <div className="payment-icon">
-                              {String(
+                              {getPaymentIcon(
                                 payment.status
-                              ).toLowerCase() ===
-                              "success"
-                                ? "✓"
-                                : "!"}
+                              )}
                             </div>
+
 
                             <div className="payment-main">
 
                               <strong>
-                                Payment #
-                                {payment.payment_id}
+                                Payment #{payment.payment_id}
                               </strong>
 
                               <span>
-                                {formatDate(
+                                {formatDateTime(
                                   payment.payment_date
                                 )}
                               </span>
 
                             </div>
 
+
                             <strong>
                               {formatCurrency(
                                 payment.amount
                               )}
                             </strong>
+
 
                             <span
                               className={`invoice-payment ${getPaymentClass(
@@ -1239,7 +973,6 @@ function Invoices() {
                             </span>
 
                           </div>
-
                         )
                       )}
 
@@ -1256,10 +989,7 @@ function Invoices() {
                 </div>
 
 
-                {/* =================================================
-                    AI RECOVERY INTELLIGENCE
-                ================================================= */}
-
+                {/* AI RECOVERY INTELLIGENCE */}
                 {analysis && (
 
                   <div className="invoice-ai-panel">
@@ -1328,10 +1058,7 @@ function Invoices() {
                 )}
 
 
-                {/* =================================================
-                    RECOVERY ACTION
-                ================================================= */}
-
+                {/* RECOVERY ACTION */}
                 {analysis && (
 
                   <div className="invoice-action-box">
@@ -1352,26 +1079,31 @@ function Invoices() {
 
                     <button
                       className="invoice-execute-button"
-                      onClick={
-                        handleExecuteAction
-                      }
+                      onClick={handleExecuteAction}
                       disabled={
                         executeLoading ||
-                        analysis.case_status !==
-                          "open"
+                        analysis.case_status ===
+                          "executed"
                       }
+                      type="button"
                     >
 
                       {executeLoading ? (
+
                         <>
                           <span className="invoice-button-spinner"></span>
                           Executing...
                         </>
+
                       ) : analysis.case_status ===
                         "executed" ? (
+
                         "✓ Action Executed"
+
                       ) : (
+
                         "Execute Recovery Action"
+
                       )}
 
                     </button>
@@ -1381,10 +1113,7 @@ function Invoices() {
                 )}
 
 
-                {/* =================================================
-                    TIMELINE
-                ================================================= */}
-
+                {/* RECOVERY TIMELINE */}
                 <div className="invoice-section">
 
                   <div className="invoice-section-header">
@@ -1531,7 +1260,6 @@ function Invoices() {
                 </div>
 
               </div>
-
             )}
 
           </div>
