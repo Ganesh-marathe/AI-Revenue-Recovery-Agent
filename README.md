@@ -2,7 +2,7 @@
 
 > **Turn At-Risk Revenue Into Recovered Revenue**
 
-ReviveAI is an AI-powered revenue recovery platform designed to identify payment risks, analyze overdue or failed invoices, recommend recovery actions, execute recovery workflows, and maintain a complete audit trail.
+ReviveAI is an AI-powered revenue recovery platform designed to identify payment risks, analyze overdue or failed invoices, recommend recovery actions, execute recovery workflows, and maintain a complete audit trail
 
 It combines **AI-driven decision intelligence, revenue-risk analysis, invoice monitoring, recovery case management, analytics, and secure authentication** into a modern SaaS-style dashboard.
 
