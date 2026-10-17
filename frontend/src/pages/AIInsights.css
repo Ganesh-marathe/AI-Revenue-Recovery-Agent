@@ -776,8 +776,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: #362686;
+  color: #3a52ed;
 }
 
 .ai-activity-copy {
@@ -791,7 +791,7 @@
 
 .ai-activity-copy p {
   margin: 3px 0 0;
-  color: #64748b;
+  color: #1850a0;
   font-size: 9px;
 }
 
