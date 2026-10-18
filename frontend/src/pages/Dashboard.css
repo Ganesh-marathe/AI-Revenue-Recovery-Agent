@@ -1239,7 +1239,6 @@
     min-width: 115px;
   }
 }
-
 @media (max-width: 480px) {
   .ra-dashboard-header h1 {
     font-size: 22px;
