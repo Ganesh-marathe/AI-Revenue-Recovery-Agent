@@ -1,3 +1,4 @@
+from backend.app.ml.risk_model import predict_customer_risk
 def choose_recovery_action(
     payment_status,
     risk_level,
@@ -69,4 +70,30 @@ def choose_recovery_action(
         "reason": reason,
         "payment_status": payment_status,
         "risk_level": risk_level
+    }
+def get_customer_recovery_plan(
+    payment_status,
+    days_overdue,
+    failed_payment_rate,
+    invoice_amount,
+):
+    """
+    Generate a customer risk prediction and recovery plan.
+    """
+
+    risk_result = predict_customer_risk(
+        days_overdue=days_overdue,
+        failed_payment_rate=failed_payment_rate,
+        invoice_amount=invoice_amount,
+    )
+
+    recovery_result = choose_recovery_action(
+        payment_status=payment_status,
+        risk_level=risk_result["risk_level"],
+        revenue_at_risk=invoice_amount,
+    )
+
+    return {
+        "risk_prediction": risk_result,
+        "recovery_action": recovery_result,
     }
