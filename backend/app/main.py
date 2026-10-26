@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from backend.app.api import analytics
 from backend.app.database.database import Base, engine
 
 # Models
@@ -25,7 +25,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
+app.include_router(
+    analytics.router,
+    prefix="/api/analytics",
+    tags=["Analytics"],
+)
 # ---------------------------------
 # CORS
 # ---------------------------------
