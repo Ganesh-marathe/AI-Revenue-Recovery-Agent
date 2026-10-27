@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-
+import RiskAnalytics from "./components/RiskAnalytics";
 import RecoveryCases from "./pages/RecoveryCases";
 import Navbar from "./components/Navbar";
 import Invoices from "./pages/Invoices";
@@ -70,6 +70,7 @@ function App() {
 
       default:
         return <Dashboard />;
+        
     }
   };
 
