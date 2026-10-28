@@ -1,180 +1,4 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-
-from backend.app.database.database import get_db
-from backend.app.models.invoice import Invoice
-from backend.app.models.payment import Payment
-from backend.app.models.recovery_case import RecoveryCase
-from backend.app.services.risk_service import calculate_revenue_risk
-from backend.app.api.auth import get_current_user
-
-
-router = APIRouter(
-    prefix="/api/analytics",
-    tags=["Analytics"]
-)
-
-
-@router.get("/revenue-risk")
-def revenue_risk(
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-
-    invoices = db.query(Invoice).all()
-
-    results = []
-
-    total_revenue_at_risk = 0
-    high_risk_cases = 0
-    medium_risk_cases = 0
-    low_risk_cases = 0
-
-    for invoice in invoices:
-
-        payment = (
-            db.query(Payment)
-            .filter(Payment.invoice_id == invoice.id)
-            .order_by(Payment.id.desc())
-            .first()
-        )
-
-        if payment:
-            payment_amount = payment.amount
-            payment_status = payment.status
-        else:
-            payment_amount = 0
-            payment_status = "pending"
-
-        risk = calculate_revenue_risk(
-            invoice.amount,
-            payment_amount,
-            payment_status
-        )
-
-        total_revenue_at_risk += risk["revenue_at_risk"]
-
-        if risk["risk_level"] == "HIGH":
-            high_risk_cases += 1
-        elif risk["risk_level"] == "MEDIUM":
-            medium_risk_cases += 1
-        else:
-            low_risk_cases += 1
-
-        results.append({
-            "invoice_id": invoice.id,
-            "customer_id": invoice.customer_id,
-            "invoice_amount": invoice.amount,
-            "payment_amount": payment_amount,
-            "payment_status": payment_status,
-            "revenue_at_risk": risk["revenue_at_risk"],
-            "risk_level": risk["risk_level"]
-        })
-
-    return {
-        "total_revenue_at_risk": total_revenue_at_risk,
-        "high_risk_cases": high_risk_cases,
-        "medium_risk_cases": medium_risk_cases,
-        "low_risk_cases": low_risk_cases,
-        "cases": results
-    }
-
-
-# ---------------------------------
-# Recovery Analytics Summary
-# ---------------------------------
-
-@router.get("/summary")
-def recovery_summary(
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-
-    total_cases = (
-        db.query(RecoveryCase)
-        .count()
-    )
-
-    open_cases = (
-        db.query(RecoveryCase)
-        .filter(
-            RecoveryCase.status == "open"
-        )
-        .count()
-    )
-
-    executed_cases = (
-        db.query(RecoveryCase)
-        .filter(
-            RecoveryCase.status == "executed"
-        )
-        .count()
-    )
-
-    high_risk_cases = (
-        db.query(RecoveryCase)
-        .filter(
-            RecoveryCase.risk_level == "HIGH"
-        )
-        .count()
-    )
-
-    total_revenue_at_risk = (
-        db.query(
-            func.coalesce(
-                func.sum(
-                    RecoveryCase.revenue_at_risk
-                ),
-                0
-            )
-        )
-        .scalar()
-    )
-
-    return {
-        "total_cases": total_cases,
-        "open_cases": open_cases,
-        "executed_cases": executed_cases,
-        "high_risk_cases": high_risk_cases,
-        "total_revenue_at_risk": total_revenue_at_risk
-    }
-
-
-# ---------------------------------
-# Risk Level Summary
-# ---------------------------------
-
-@router.get("/risk-summary")
-def risk_summary(
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
-
-    high_risk = (
-        db.query(RecoveryCase)
-        .filter(RecoveryCase.risk_level == "HIGH")
-        .count()
-    )
-
-    medium_risk = (
-        db.query(RecoveryCase)
-        .filter(RecoveryCase.risk_level == "MEDIUM")
-        .count()
-    )
-
-    low_risk = (
-        db.query(RecoveryCase)
-        .filter(RecoveryCase.risk_level == "LOW")
-        .count()
-    )
-
-    return {
-        "HIGH": high_risk,
-        "MEDIUM": medium_risk,
-        "LOW": low_risk
-    }
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 
 from backend.app.ml.risk_model import predict_customer_risk
 
@@ -183,26 +7,31 @@ router = APIRouter()
 
 @router.get("/customer-risk")
 def get_customer_risk(
-    days_overdue: int = 45,
-    failed_payment_rate: float = 0.75,
-    invoice_amount: float = 50000,
+    days_overdue: int = Query(default=45, ge=0),
+    failed_payment_rate: float = Query(default=0.75, ge=0, le=1),
+    invoice_amount: float = Query(default=50000, gt=0),
 ):
-    """
-    Return customer payment risk analytics.
-    """
+    """Return validated customer payment risk analytics."""
 
-    risk_result = predict_customer_risk(
-        days_overdue=days_overdue,
-        failed_payment_rate=failed_payment_rate,
-        invoice_amount=invoice_amount,
-    )
+    try:
+        risk_result = predict_customer_risk(
+            days_overdue=days_overdue,
+            failed_payment_rate=failed_payment_rate,
+            invoice_amount=invoice_amount,
+        )
 
-    return {
-        "success": True,
-        "customer_risk": risk_result,
-        "customer_metrics": {
-            "days_overdue": days_overdue,
-            "failed_payment_rate": failed_payment_rate,
-            "invoice_amount": invoice_amount,
-        },
-    }
+        return {
+            "success": True,
+            "customer_risk": risk_result,
+            "customer_metrics": {
+                "days_overdue": days_overdue,
+                "failed_payment_rate": failed_payment_rate,
+                "invoice_amount": invoice_amount,
+            },
+        }
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
