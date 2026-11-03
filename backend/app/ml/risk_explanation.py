@@ -1,8 +1,5 @@
-def explain_customer_risk(
-    days_overdue,
-    failed_payment_rate,
-    invoice_amount
-):
+def explain_customer_risk(days_overdue, failed_payment_rate, invoice_amount):
+
     if days_overdue < 0:
         raise ValueError("Days overdue cannot be negative.")
 
@@ -10,7 +7,7 @@ def explain_customer_risk(
         raise ValueError("Failed payment rate must be between 0 and 1.")
 
     if invoice_amount <= 0:
-        raise ValueError("Invoice amount must be positive.")
+        raise ValueError("Invoice amount must be greater than zero.")
 
     factors = []
 
@@ -33,11 +30,15 @@ def explain_customer_risk(
     elif invoice_amount >= 50000:
         factors.append("A significant invoice amount is at risk.")
 
-    if not factors:
-        factors.append("No major payment risk factors identified.")
+    total_factors = len(factors)
+
+    if total_factors == 0:
+        explanation = "No major payment risk factors identified."
+    else:
+        explanation = " ".join(factors)
 
     return {
-        "total_risk_factors": len(factors),
+        "total_risk_factors": total_factors,
         "risk_factors": factors,
-        "explanation": " ".join(factors)
+        "explanation": explanation
     }
