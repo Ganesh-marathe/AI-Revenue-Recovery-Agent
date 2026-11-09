@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import "./RiskAnalytics.css";
 const API_URL = "http://127.0.0.1:8000/api/analytics/customer-risk";
 
 function RiskAnalytics() {
@@ -37,22 +37,33 @@ function RiskAnalytics() {
     if (!riskData) return <p>No risk data available.</p>;
 
     return (
-        <div className="risk-analytics">
-            <h2>Customer Risk Analytics</h2>
+       <div className="risk-card">
+    <h3>Customer Risk Level</h3>
 
-            <div className="risk-card">
-                <h3>Risk Level</h3>
-                <h1>{riskData.risk_level}</h1>
+    <h1 className={`risk-${riskData.risk_level.toLowerCase()}`}>
+        {riskData.risk_level}
+    </h1>
 
-                <p>
-                    Risk Score: {riskData.risk_score}/100
-                </p>
+    <p>Risk Score: {riskData.risk_score}/100</p>
 
-                <p>
-                    Recommendation: {riskData.recommendation}
-                </p>
-            </div>
-        </div>
+    <div className="risk-score-track">
+        <div
+            className={`risk-score-fill risk-${riskData.risk_level.toLowerCase()}`}
+            style={{
+                width: `${Math.min(100, Math.max(0, riskData.risk_score))}%`,
+                backgroundColor:
+                    riskData.risk_level === "HIGH"
+                        ? "#dc2626"
+                        : riskData.risk_level === "MEDIUM"
+                        ? "#d97706"
+                        : "#16a34a"
+            }}
+        />
+    </div>
+
+    <p>Recommendation: {riskData.recommendation}</p>
+</div>
+        
     );
 }
 
