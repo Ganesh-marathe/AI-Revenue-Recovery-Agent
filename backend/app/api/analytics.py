@@ -35,3 +35,18 @@ def get_customer_risk(
             status_code=400,
             detail=str(exc),
         ) from exc
+    {
+  "success": true,
+  "customer_risk": {
+    "risk_level": "HIGH",
+    "risk_score": 80
+  },
+  "risk_explanation": {
+    "total_risk_factors": 3,
+    "risk_factors": [
+      "Payment is overdue by more than 30 days.",
+      "Customer has a very high failed payment rate.",
+      "A significant invoice amount is at risk."
+    ]
+  }
+}
